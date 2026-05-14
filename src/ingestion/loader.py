@@ -48,7 +48,7 @@ def load_iloom(raw_path: str | Path, target_date: str = None) -> pd.DataFrame:
 
     # ── 날짜 필터
     if target_date is None:
-        target_date = str(df["작업일시"].dt.date.min())
+        target_date = str(df["작업일시"].dropna().dt.date.min())
 
     start  = pd.Timestamp(target_date)
     cutoff = start + pd.Timedelta(hours=30, minutes=1)  # 다음날 06:01 exclusive

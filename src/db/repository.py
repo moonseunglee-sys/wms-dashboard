@@ -35,6 +35,7 @@ def init_db() -> None:
                 LOCATION        TEXT,
                 작업일시        TIMESTAMP,
                 출고지역        TEXT,
+                shift           TEXT,
                 zone_code       TEXT,
                 zone            TEXT,
                 rack            REAL,

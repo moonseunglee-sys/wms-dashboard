@@ -12,6 +12,20 @@ DB_PATH = BASE_DIR / "data" / "productivity.db"
 # 기준값 툴 파일 — data/raw/ 또는 BASE_DIR에 위치
 TOOL_FILE_NAME = "양지센터 피킹 가동율_05.12.xlsx"
 
+# ── 이동속도 설정
+# 툴파일 이동시간은 3.0 km/h 기준으로 계산된 값
+# 일룸은 2.0 km/h → travel_factor = 3.0 / 2.0 = 1.5
+_REFERENCE_SPEED_KMH = 3.0
+_TRAVEL_SPEED_KMH = {
+    "퍼시스": 3.0,
+    "일룸":   2.0,
+}
+
+def get_travel_factor(owner: str) -> float:
+    speed = _TRAVEL_SPEED_KMH.get(owner, _REFERENCE_SPEED_KMH)
+    return _REFERENCE_SPEED_KMH / speed
+
+
 def find_tool_file(hint_dir: Path | None = None) -> Path:
     """툴 파일을 hint_dir → data/raw → BASE_DIR 순으로 탐색"""
     candidates = []

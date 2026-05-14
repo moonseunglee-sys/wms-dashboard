@@ -93,9 +93,14 @@ def _item_loc_key(item_id, plt_id, zone, rack, loc, tier) -> str:
 # ─────────────────────────────────────────────
 # 메인 계산: 품목별 15개 세부시간 + 작업시간
 # ─────────────────────────────────────────────
-def calc_standard_times(df: pd.DataFrame, ref: dict) -> pd.DataFrame:
+def calc_standard_times(df: pd.DataFrame, ref: dict, travel_factor: float = 1.0) -> pd.DataFrame:
+    """
+    travel_factor: 이동시간 전체 배율
+      퍼시스 3.0 km/h 기준(=1.0), 일룸 2.0 km/h → factor = 3.0/2.0 = 1.5
+    """
     rows = df.to_dict("records")
     n = len(rows)
+    has_shift = "shift" in df.columns
     results = []
 
     for i, row in enumerate(rows):
@@ -189,6 +194,12 @@ def calc_standard_times(df: pd.DataFrame, ref: dict) -> pd.DataFrame:
 
         t_barcode_loc = 0.0 if same_next_item_loc else ref["barcode_loc"]
 
+        # ── 이동시간 speed factor 적용 (일룸 2.0 km/h 등 속도 차이 보정)
+        if travel_factor != 1.0:
+            t_start_zone *= travel_factor; t_start_rack *= travel_factor; t_start_loc *= travel_factor
+            t_end_zone   *= travel_factor; t_end_rack   *= travel_factor; t_end_loc   *= travel_factor
+            t_zone       *= travel_factor; t_rack       *= travel_factor; t_loc       *= travel_factor
+
         # ── AQ: 공파렛트 준비시간 (분) — wave 시작 행만
         t_pallet = ref["pallet_prep"].get("DPS외", 0.30333) if is_wave_start else 0.0
 
@@ -234,7 +245,7 @@ def calc_standard_times(df: pd.DataFrame, ref: dict) -> pd.DataFrame:
         else:
             t_work_adj = t_work_prime
 
-        results.append({
+        rec = {
             "작업자":   worker,
             "WAVE명":   row.get("WAVE명", ""),
             "WAVE번호": wave_no,
@@ -273,7 +284,10 @@ def calc_standard_times(df: pd.DataFrame, ref: dict) -> pd.DataFrame:
             "작업시간_min":     t_work,        # AB
             "작업시간_prime":   t_work_prime,  # AC
             "작업소요시간_min": t_work_adj,    # AV
-        })
+        }
+        if has_shift:
+            rec["shift"] = row.get("shift")
+        results.append(rec)
 
     return pd.DataFrame(results)
 
@@ -358,8 +372,12 @@ _DETAIL_COLS = [
 ]
 
 
-def export_results(detail_df: pd.DataFrame, summary_df: pd.DataFrame, output_path: str) -> None:
+def export_results(detail_df: pd.DataFrame, summary_df: pd.DataFrame, output_path: str,
+                   sheet_suffix: str = "F_1") -> None:
     export_cols = [c for c in _DETAIL_COLS if c in detail_df.columns]
+    # shift 컬럼이 있으면 앞에 삽입
+    if "shift" in detail_df.columns and "shift" not in export_cols:
+        export_cols.insert(export_cols.index("출고지역") + 1, "shift")
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         summary_df.to_excel(writer, sheet_name="피킹실적", index=False)
-        detail_df[export_cols].to_excel(writer, sheet_name="상세데이터(F_1)", index=False)
+        detail_df[export_cols].to_excel(writer, sheet_name=f"상세데이터({sheet_suffix})", index=False)

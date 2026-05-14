@@ -1,33 +1,25 @@
 import pandas as pd
 from pathlib import Path
-from config.settings import COLUMN_MAP, DATA_ARCHIVE_DIR
+from config.settings import DATA_ARCHIVE_DIR
 import shutil
 from datetime import datetime
 
 
-def load_excel(file_path: str | Path) -> pd.DataFrame:
-    path = Path(file_path)
-    df = pd.read_excel(path, dtype=str)
-    df = _rename_columns(df)
-    df = _parse_types(df)
+def load_and_sort(raw_path: str | Path) -> pd.DataFrame:
+    """Raw Excel 로드 → 컬럼 정리 → 정렬 (작업자/작업일시/WAVE명/PLT_ID/LOCATION)"""
+    path = Path(raw_path)
+    df = pd.read_excel(path)
+    df.columns = df.columns.str.strip()
+    df = df.rename(columns={
+        "ITEM ID": "ITEM_ID",
+        "PLT ID":  "PLT_ID",
+    })
+    df["작업일시"] = pd.to_datetime(df["작업일시"], errors="coerce")
+    df = df.sort_values(
+        ["작업자", "작업일시", "WAVE명", "PLT_ID", "LOCATION"],
+        ascending=True,
+    ).reset_index(drop=True)
     _archive(path)
-    return df
-
-
-def _rename_columns(df: pd.DataFrame) -> pd.DataFrame:
-    reverse_map = {v: k for k, v in COLUMN_MAP.items()}
-    return df.rename(columns=reverse_map)
-
-
-def _parse_types(df: pd.DataFrame) -> pd.DataFrame:
-    if "work_date" in df.columns:
-        df["work_date"] = pd.to_datetime(df["work_date"], errors="coerce")
-    for col in ("pick_lines", "pick_qty", "travel_distance"):
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    for col in ("work_start", "work_end"):
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], format="%H:%M", errors="coerce").dt.time
     return df
 
 

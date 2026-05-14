@@ -100,7 +100,7 @@ def calc_standard_times(df: pd.DataFrame, ref: dict, travel_factor: float = 1.0)
     """
     rows = df.to_dict("records")
     n = len(rows)
-    has_shift = "shift" in df.columns
+    has_shift = "shift_type" in df.columns
     results = []
 
     for i, row in enumerate(rows):
@@ -286,7 +286,7 @@ def calc_standard_times(df: pd.DataFrame, ref: dict, travel_factor: float = 1.0)
             "작업소요시간_min": t_work_adj,    # AV
         }
         if has_shift:
-            rec["shift"] = row.get("shift")
+            rec["shift_type"] = row.get("shift_type")
         results.append(rec)
 
     return pd.DataFrame(results)
@@ -376,8 +376,8 @@ def export_results(detail_df: pd.DataFrame, summary_df: pd.DataFrame, output_pat
                    sheet_suffix: str = "F_1") -> None:
     export_cols = [c for c in _DETAIL_COLS if c in detail_df.columns]
     # shift 컬럼이 있으면 앞에 삽입
-    if "shift" in detail_df.columns and "shift" not in export_cols:
-        export_cols.insert(export_cols.index("출고지역") + 1, "shift")
+    if "shift_type" in detail_df.columns and "shift_type" not in export_cols:
+        export_cols.insert(export_cols.index("출고지역") + 1, "shift_type")
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         summary_df.to_excel(writer, sheet_name="피킹실적", index=False)
         detail_df[export_cols].to_excel(writer, sheet_name=f"상세데이터({sheet_suffix})", index=False)

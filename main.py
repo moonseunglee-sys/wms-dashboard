@@ -39,7 +39,7 @@ def run(raw_path: str, tool_path: str | None = None, owner: str = "퍼시스",
     print(f"[3/6] Raw data 로드 ({owner})...")
     if owner == "일룸":
         df = load_iloom(raw, target_date=date)
-        shift_info = f"  주간 {(df['shift']=='주간').sum()}행 / 야간 {(df['shift']=='야간').sum()}행"
+        shift_info = f"  주간 {(df['shift_type']=='주간').sum()}행 / 야간 {(df['shift_type']=='야간').sum()}행"
     else:
         df = load_and_sort(raw)
         shift_info = ""

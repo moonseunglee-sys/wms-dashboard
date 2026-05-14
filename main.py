@@ -41,7 +41,6 @@ def run(raw_path: str, tool_path: str | None = None, owner: str = "퍼시스") -
     summary_df = calc_picking_summary(detail_df)
 
     print(f"[6/6] DB 저장 및 Excel 출력...")
-    init_db()
     save(detail_df, table="picking_detail")
 
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)

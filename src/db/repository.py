@@ -1,10 +1,10 @@
 import pandas as pd
 from sqlalchemy import create_engine, text
-from config.settings import DB_PATH
+from config.settings import DB_URL
 
 
 def get_engine():
-    return create_engine(f"sqlite:///{DB_PATH}")
+    return create_engine(DB_URL, pool_pre_ping=True)
 
 
 def save(df: pd.DataFrame, table: str = "picking_detail") -> int:
@@ -24,15 +24,15 @@ def init_db() -> None:
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS picking_detail (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                id              SERIAL PRIMARY KEY,
                 작업자          TEXT,
-                WAVE명          TEXT,
-                WAVE번호        TEXT,
-                PLT_ID          TEXT,
+                "WAVE명"        TEXT,
+                "WAVE번호"      TEXT,
+                "PLT_ID"        TEXT,
                 오더번호        TEXT,
-                ITEM_ID         TEXT,
+                "ITEM_ID"       TEXT,
                 피킹수량        INTEGER,
-                LOCATION        TEXT,
+                "LOCATION"      TEXT,
                 작업일시        TIMESTAMP,
                 출고지역        TEXT,
                 shift_type      TEXT,

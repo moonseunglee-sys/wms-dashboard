@@ -7,7 +7,6 @@ import openpyxl
 from src.ingestion.reference_loader import load_reference_tables
 from src.ingestion.loader import load_iloom
 from src.calculation.standard_time import calc_standard_times, calc_cumulative
-from config.settings import get_travel_factor
 
 TOOL   = "data/raw/양지센터 피킹 가동율_05.12.xlsx"
 RAW    = "data/raw/일룸_0512_0513.xlsx"
@@ -18,7 +17,7 @@ pd.set_option("display.float_format", "{:.4f}".format)
 # ── 1. 자동화 계산
 ref = load_reference_tables(TOOL)
 df  = load_iloom(RAW, "2026-05-12")
-det = calc_standard_times(df, ref, travel_factor=get_travel_factor("일룸"))
+det = calc_standard_times(df, ref)
 det = calc_cumulative(det)
 
 our = det[det["작업자"] == WORKER].reset_index(drop=True)

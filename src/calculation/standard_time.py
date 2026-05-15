@@ -93,11 +93,7 @@ def _item_loc_key(item_id, plt_id, zone, rack, loc, tier) -> str:
 # ─────────────────────────────────────────────
 # 메인 계산: 품목별 15개 세부시간 + 작업시간
 # ─────────────────────────────────────────────
-def calc_standard_times(df: pd.DataFrame, ref: dict, travel_factor: float = 1.0) -> pd.DataFrame:
-    """
-    travel_factor: 이동시간 전체 배율
-      퍼시스 3.0 km/h 기준(=1.0), 일룸 2.0 km/h → factor = 3.0/2.0 = 1.5
-    """
+def calc_standard_times(df: pd.DataFrame, ref: dict) -> pd.DataFrame:
     rows = df.to_dict("records")
     n = len(rows)
     has_shift = "shift_type" in df.columns
@@ -158,8 +154,10 @@ def calc_standard_times(df: pd.DataFrame, ref: dict, travel_factor: float = 1.0)
         t_end_rack = get_rack_time_min(ref, zone, rack, int(end_r)) if (is_wave_end and end_r is not None and rack is not None) else 0.0
         t_end_loc  = get_loc_time_min(ref, loc, int(end_l))        if (is_wave_end and end_l is not None and loc  is not None) else 0.0
 
-        # ── AJ/AK/AL: 중간 이동시간 (분) — 같은 팔레트 내에서만
-        same_plt = prev is not None and str(prev.get("PLT_ID", "")) == plt_id
+        # ── AJ/AK/AL: 중간 이동시간 (분) — 같은 wave 내에서만 (wave 시작 행 제외)
+        same_plt = (prev is not None
+                    and str(prev.get("PLT_ID", "")) == plt_id
+                    and not is_wave_start)
         t_zone = get_zone_time_min(ref, pz, zone) if (same_plt and pz and zone) else 0.0
         t_rack = get_rack_time_min(ref, zone, pr, rack) if (same_plt and pr is not None and rack is not None) else 0.0
         t_loc  = get_loc_time_min(ref, loc, pl)        if (same_plt and pl is not None and loc  is not None) else 0.0
@@ -193,12 +191,6 @@ def calc_standard_times(df: pd.DataFrame, ref: dict, travel_factor: float = 1.0)
             same_next_item_loc = False
 
         t_barcode_loc = 0.0 if same_next_item_loc else ref["barcode_loc"]
-
-        # ── 이동시간 speed factor 적용 (일룸 2.0 km/h 등 속도 차이 보정)
-        if travel_factor != 1.0:
-            t_start_zone *= travel_factor; t_start_rack *= travel_factor; t_start_loc *= travel_factor
-            t_end_zone   *= travel_factor; t_end_rack   *= travel_factor; t_end_loc   *= travel_factor
-            t_zone       *= travel_factor; t_rack       *= travel_factor; t_loc       *= travel_factor
 
         # ── AQ: 공파렛트 준비시간 (분) — wave 시작 행만
         t_pallet = ref["pallet_prep"].get("DPS외", 0.30333) if is_wave_start else 0.0

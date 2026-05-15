@@ -9,7 +9,7 @@ WMS 피킹 생산성 자동화 파이프라인
 import argparse
 from pathlib import Path
 
-from config.settings import find_tool_file, OUTPUTS_DIR, get_travel_factor
+from config.settings import find_tool_file, OUTPUTS_DIR
 from src.ingestion.reference_loader import load_reference_tables
 from src.ingestion.loader import load_and_sort, load_iloom
 from src.calculation.standard_time import (
@@ -45,12 +45,8 @@ def run(raw_path: str, tool_path: str | None = None, owner: str = "퍼시스",
         shift_info = ""
     print(f"      {len(df)}행  작업자 {df['작업자'].nunique()}명  Wave {df['WAVE명'].nunique()}개{shift_info}")
 
-    travel_factor = get_travel_factor(owner)
-    if travel_factor != 1.0:
-        print(f"      이동시간 factor: {travel_factor:.2f} ({owner} 속도 보정)")
-
     print(f"[4/6] 표준시간 계산 (15개 세부시간)...")
-    detail_df = calc_standard_times(df, ref, travel_factor=travel_factor)
+    detail_df = calc_standard_times(df, ref)
 
     print(f"[5/6] 누계 집계...")
     detail_df = calc_cumulative(detail_df)

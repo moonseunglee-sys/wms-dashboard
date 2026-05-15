@@ -1,28 +1,37 @@
 @import "tailwindcss";
 
-@theme {
-  --color-navy-950: #0b1428;
-  --color-navy-900: #0f1e3c;
-  --color-navy-800: #162444;
-  --color-navy-700: #1e3054;
-  --color-navy-600: #243868;
-  --color-accent:   #3b82f6;
-  --color-accent-h: #2563eb;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
-  background: #f0f2f5;
-  color: #1f2937;
+  background: #F5F5F5;
+  color: #333;
+  font-size: 13px;
 }
 
-#root {
-  width: 100%;
-  min-height: 100vh;
+#root { width: 100%; min-height: 100vh; }
+
+/* ── 사이드바 네비 ── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  border-left: 3px solid transparent;
 }
+.nav-item:hover { background: rgba(255,255,255,0.06); color: #fff !important; }
+.nav-item.active {
+  background: rgba(255, 107, 53, 0.14);
+  border-left-color: #FF6B35;
+  color: #fff !important;
+}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #bbb; }

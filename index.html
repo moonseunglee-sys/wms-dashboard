@@ -454,7 +454,7 @@ function getDateRange() {
     return { from:document.getElementById('dateFrom').value, to:document.getElementById('dateTo').value }
   }
   const base = document.getElementById('dateSelect').value
-  if (!base) return { from:dates[0]||'', to:dates[0]||'' }
+  if (!base || !dates.length) return null
   if (period==='1d') return { from:base, to:base }
   const d = new Date(base)
   if (period==='week') { const f=new Date(d); f.setDate(d.getDate()-6); return { from:f.toISOString().slice(0,10), to:base } }
@@ -471,7 +471,8 @@ async function loadAll() {
 
 // ── 레벨0: 전체 센터 ────────────────────────────────
 async function loadCenters() {
-  const { from, to } = getDateRange()
+  const { from, to } = getDateRange() || {}
+  if (!from || !to) return
   const { data } = await db.from('zone_daily')
     .select('*')
     .eq('owner',owner)
@@ -559,7 +560,8 @@ function drillCenter(centerId, centerName) {
 }
 
 async function loadZones() {
-  const { from, to } = getDateRange()
+  const { from, to } = getDateRange() || {}
+  if (!from || !to) return
   const { data } = await db.from('zone_daily')
     .select('*').eq('owner',owner)
     .gte('work_date',from).lte('work_date',to)
@@ -666,7 +668,8 @@ function drillZone(zoneName) {
 }
 
 async function loadWorkers() {
-  const { from, to } = getDateRange()
+  const { from, to } = getDateRange() || {}
+  if (!from || !to) return
   const { data } = await db.from('worker_daily')
     .select('*').eq('owner',owner).eq('zone',selectedZone)
     .gte('work_date',from).lte('work_date',to)

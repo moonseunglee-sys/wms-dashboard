@@ -326,7 +326,7 @@ tr:last-child td{border-bottom:none}
             <th>Zone</th>
             <th>공당 피킹박스수</th>
             <th>공당 피킹금액</th>
-            <th>피킹건수</th>
+            <th>피킹박스수</th>
             <th>피킹금액(만원)</th>
             <th>실적시간(hr)</th>
             <th>가동률</th>
@@ -352,7 +352,7 @@ tr:last-child td{border-bottom:none}
             <th>근무</th>
             <th>공당 피킹박스수</th>
             <th>공당 피킹금액</th>
-            <th>피킹건수</th>
+            <th>피킹박스수</th>
             <th>실적시간(hr)</th>
             <th>가동률</th>
           </tr></thead>
@@ -499,7 +499,7 @@ async function loadCenters() {
       <div class="kpi-sub">총 ${totalAmt.toLocaleString()}만원</div>
     </div>
     <div class="kpi-card c-green">
-      <div class="kpi-head"><span class="kpi-lbl">총 피킹건수</span><div class="kpi-ico c-green">📋</div></div>
+      <div class="kpi-head"><span class="kpi-lbl">총 피킹박스수</span><div class="kpi-ico c-green">📋</div></div>
       <div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div>
       <div class="kpi-sub">기간: ${from===to?from:from+' ~ '+to}</div>
     </div>
@@ -530,7 +530,7 @@ async function loadCenters() {
         <div class="center-metrics">
           <div class="center-metric"><div class="center-metric-lbl">공당 피킹박스수</div><div class="center-metric-val">${yaBph}<span class="center-metric-unit">건/hr</span></div></div>
           <div class="center-metric"><div class="center-metric-lbl">공당 피킹금액</div><div class="center-metric-val">${yaAph}<span class="center-metric-unit">만원/hr</span></div></div>
-          <div class="center-metric"><div class="center-metric-lbl">총 피킹건수</div><div class="center-metric-val">${yaPick.toLocaleString()}<span class="center-metric-unit">건</span></div></div>
+          <div class="center-metric"><div class="center-metric-lbl">총 피킹박스수</div><div class="center-metric-val">${yaPick.toLocaleString()}<span class="center-metric-unit">건</span></div></div>
           <div class="center-metric"><div class="center-metric-lbl">실적시간</div><div class="center-metric-val">${yaAct.toFixed(1)}<span class="center-metric-unit">hr</span></div></div>
         </div>
       </div>`
@@ -605,7 +605,7 @@ async function loadZones() {
       <div class="kpi-sub">총 ${totalAmt.toLocaleString()}만원</div>
     </div>
     <div class="kpi-card c-green">
-      <div class="kpi-head"><span class="kpi-lbl">총 피킹건수</span><div class="kpi-ico c-green">📋</div></div>
+      <div class="kpi-head"><span class="kpi-lbl">총 피킹박스수</span><div class="kpi-ico c-green">📋</div></div>
       <div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div>
       <div class="kpi-sub">${zones.length}개 Zone 집계</div>
     </div>

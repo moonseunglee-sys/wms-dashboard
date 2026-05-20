@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LETUS WMS · 피킹 생산성</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#1e2235;--navy2:#252a3d;--navy3:#2e3450;
+  --bg:#f0f2f8;--white:#fff;--border:#e4e8f0;
+  --text:#1a1f36;--text2:#6b7280;--text3:#9ca3af;
+  --orange:#ff6b35;--orange-bg:#fff3ef;
+  --blue:#3b82f6;--blue-bg:#eff6ff;
+  --green:#22c55e;--green-bg:#f0fdf4;
+  --red:#ef4444;--red-bg:#fef2f2;
+  --amber:#f59e0b;--amber-bg:#fffbeb;
+  --purple:#8b5cf6;--purple-bg:#f5f3ff;
+  --teal:#14b8a6;--teal-bg:#f0fdfa;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.1);
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;font-size:14px}
+
+/* 사이드바 */
+.sidebar{width:200px;min-width:200px;background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.logo{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.logo-main{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.3px}
+.logo-main em{color:var(--orange);font-style:normal}
+.logo-sub{font-size:10px;color:rgba(255,255,255,0.25);margin-top:3px;letter-spacing:0.8px}
+.search-wrap{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.search-inp{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:7px 10px;color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none}
+.search-inp::placeholder{color:rgba(255,255,255,0.25)}
+.nav-tabs{display:flex;padding:10px 10px 0;gap:3px}
+.ntab{flex:1;padding:5px;text-align:center;border-radius:5px;font-size:11px;cursor:pointer;border:none;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-family:inherit;transition:.15s}
+.ntab.active{background:var(--orange);color:#fff}
+.nav{padding:8px 8px}
+.nav-section-label{font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:1.5px;text-transform:uppercase;padding:8px 8px 4px}
+.nav-group{margin-bottom:1px}
+.nav-grp-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:6px;font-size:13px;color:rgba(255,255,255,0.55);cursor:pointer;border:none;background:transparent;font-family:inherit;transition:.15s}
+.nav-grp-btn:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.8)}
+.nav-grp-icon{display:flex;align-items:center;gap:7px}
+.nav-children{padding-left:6px}
+.nav-child{width:100%;display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:5px;font-size:12px;color:rgba(255,255,255,0.4);cursor:pointer;border:none;background:transparent;font-family:inherit;transition:.15s;text-align:left}
+.nav-child:hover{color:rgba(255,255,255,0.7)}
+.nav-child.active{background:var(--orange);color:#fff;font-weight:500}
+.nav-child::before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0}
+.nav-child.active::before{opacity:1}
+.nav-badge{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.25)}
+.sidebar-footer{margin-top:auto;padding:12px 14px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:rgba(255,255,255,0.15);text-align:center}
+
+/* 메인 */
+.main{margin-left:200px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.topbar-menu-btn{background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;font-size:16px}
+.page-title{font-size:15px;font-weight:600;color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-icon-btn{background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:14px;padding:4px}
+.user-box{text-align:right}
+.user-name{font-size:13px;font-weight:600;color:var(--text)}
+.user-role{font-size:11px;color:var(--text3)}
+
+/* 브레드크럼 */
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:12px 24px;background:var(--white);border-bottom:1px solid var(--border);font-size:12px;color:var(--text3)}
+.bc-item{cursor:pointer;color:var(--text2);transition:.15s}
+.bc-item:hover{color:var(--orange)}
+.bc-item.active{color:var(--text);font-weight:500;cursor:default}
+.bc-sep{color:var(--text3)}
+
+/* 콘텐츠 */
+.content{padding:20px 24px;flex:1}
+
+/* 필터바 */
+.filterbar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;background:var(--white);padding:12px 16px;border-radius:10px;box-shadow:var(--shadow)}
+.filter-label{font-size:12px;color:var(--text2);white-space:nowrap;font-weight:500}
+.filter-sel{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none;cursor:pointer}
+.period-tabs{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.ptab{padding:5px 12px;font-size:12px;cursor:pointer;color:var(--text2);border:none;background:transparent;font-family:inherit;transition:.15s}
+.ptab.active{background:var(--orange);color:#fff;font-weight:500}
+.date-ctrl{display:flex;align-items:center;gap:4px}
+.date-btn{background:var(--bg);border:1px solid var(--border);color:var(--text2);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.date-btn:hover{border-color:var(--orange);color:var(--orange)}
+.date-from,.date-to{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text);font-size:12px;font-family:inherit;outline:none}
+.filter-divider{width:1px;height:20px;background:var(--border);margin:0 4px}
+.owner-tabs{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.otab{padding:5px 14px;font-size:12px;cursor:pointer;color:var(--text2);border:none;background:transparent;font-family:inherit;transition:.15s}
+.otab.active{background:var(--navy);color:#fff;font-weight:500}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:var(--white);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);border-left:3px solid transparent}
+.kpi-card.c-orange{border-left-color:var(--orange)}
+.kpi-card.c-blue{border-left-color:var(--blue)}
+.kpi-card.c-green{border-left-color:var(--green)}
+.kpi-card.c-purple{border-left-color:var(--purple)}
+.kpi-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.kpi-lbl{font-size:11px;color:var(--text2);font-weight:500}
+.kpi-ico{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.kpi-ico.c-orange{background:var(--orange-bg)}
+.kpi-ico.c-blue{background:var(--blue-bg)}
+.kpi-ico.c-green{background:var(--green-bg)}
+.kpi-ico.c-purple{background:var(--purple-bg)}
+.kpi-val{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.kpi-unit{font-size:12px;color:var(--text2);font-weight:400;margin-left:2px}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:5px}
+
+/* 섹션 카드 */
+.sec-card{background:var(--white);border-radius:10px;box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border)}
+.sec-title{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text)}
+.sec-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.sec-dot.orange{background:var(--orange)}
+.sec-dot.blue{background:var(--blue)}
+.sec-dot.green{background:var(--green)}
+.sec-sub{font-size:11px;color:var(--text3)}
+
+/* 센터 카드 그리드 */
+.center-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.center-card{background:var(--white);border-radius:10px;padding:18px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;border:2px solid transparent;position:relative;overflow:hidden}
+.center-card:hover{border-color:var(--orange);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.center-card.has-data{cursor:pointer}
+.center-card.no-data{cursor:default;opacity:0.6}
+.center-card.no-data:hover{transform:none;border-color:transparent;box-shadow:var(--shadow)}
+.center-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.center-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600}
+.center-badge.active{background:var(--green-bg);color:var(--green)}
+.center-badge.inactive{background:var(--bg);color:var(--text3)}
+.center-badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.center-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.center-sub{font-size:11px;color:var(--text3);margin-bottom:14px}
+.center-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.center-metric{background:var(--bg);border-radius:7px;padding:8px 10px}
+.center-metric-lbl{font-size:10px;color:var(--text3);margin-bottom:3px}
+.center-metric-val{font-size:15px;font-weight:700;color:var(--text)}
+.center-metric-unit{font-size:10px;color:var(--text2);margin-left:2px}
+.center-coming{position:absolute;inset:0;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);font-weight:500}
+
+/* 테이블 */
+table{width:100%;border-collapse:collapse}
+thead tr{background:#fafbfc}
+th{padding:9px 14px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;text-align:right;color:var(--text2)}
+td:first-child{text-align:left;color:var(--text);font-weight:500}
+tr:last-child td{border-bottom:none}
+.tbl-row-click:hover td{background:#fff8f5;cursor:pointer}
+.zone-tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:600;background:var(--blue-bg);color:var(--blue)}
+.zone-tag.ps{background:var(--amber-bg);color:var(--amber)}
+.shift-day{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;background:var(--orange-bg);color:var(--orange);font-weight:500}
+.shift-night{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;background:var(--navy2);color:rgba(255,255,255,0.7);font-weight:500}
+
+/* 가동률 바 */
+.eff-wrap{display:flex;align-items:center;gap:7px;justify-content:flex-end}
+.eff-bar{width:70px;height:4px;background:#f0f2f8;border-radius:2px;overflow:hidden;flex-shrink:0}
+.eff-fill{height:100%;border-radius:2px}
+.eff-num{font-size:12px;font-weight:600;min-width:40px;text-align:right}
+
+/* 차트 */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+
+/* 로딩 */
+.loading{display:flex;align-items:center;justify-content:center;padding:28px;color:var(--text3);gap:8px;font-size:13px}
+.spinner{width:15px;height:15px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 빈 상태 */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;color:var(--text3);gap:8px;font-size:13px}
+
+/* 클릭 힌트 */
+.click-hint{font-size:10px;color:var(--text3);margin-top:6px}
+
+/* 기간 직접 지정 */
+.date-range-row{display:flex;align-items:center;gap:6px}
+.date-range-label{font-size:12px;color:var(--text3)}
+</style>
+</head>
+<body>
+
+<!-- 사이드바 -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-main">LETUS <em>WMS</em></div>
+    <div class="logo-sub">PRODUCTIVITY ANALYTICS</div>
+  </div>
+  <div class="search-wrap">
+    <input class="search-inp" placeholder="🔍 메뉴 검색...">
+  </div>
+  <div class="nav-tabs">
+    <button class="ntab active">전체메뉴</button>
+    <button class="ntab">즐겨찾기</button>
+  </div>
+  <div class="nav">
+    <div class="nav-section-label">생산성 지표</div>
+    <div class="nav-group">
+      <button class="nav-grp-btn">
+        <div class="nav-grp-icon">📦 피킹 생산성</div>
+        <span style="font-size:10px;color:rgba(255,255,255,0.2)">▾</span>
+      </button>
+      <div class="nav-children">
+        <button class="nav-child active" onclick="navTo('picking',this)">센터별 현황</button>
+      </div>
+    </div>
+    <div class="nav-group">
+      <button class="nav-grp-btn">
+        <div class="nav-grp-icon">🚚 입고 생산성</div>
+        <span style="font-size:10px;color:rgba(255,255,255,0.2)">▾</span>
+      </button>
+      <div class="nav-children">
+        <button class="nav-child" onclick="navTo('inbound',this)">센터별 현황 <span class="nav-badge">준비중</span></button>
+      </div>
+    </div>
+    <div class="nav-section-label" style="margin-top:8px">비교 분석</div>
+    <div class="nav-group">
+      <button class="nav-grp-btn">
+        <div class="nav-grp-icon">📊 센터 비교</div>
+      </button>
+      <div class="nav-children">
+        <button class="nav-child" onclick="navTo('compare',this)">멀티센터 비교 <span class="nav-badge">준비중</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-footer">© 2026 LETUS WMS</div>
+</nav>
+
+<!-- 메인 -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-menu-btn">☰</button>
+      <div class="page-title" id="pageTitle">피킹 생산성 대시보드</div>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-icon-btn">🔄</button>
+      <button class="topbar-icon-btn">🔔</button>
+      <div class="user-box">
+        <div class="user-name">이문승</div>
+        <div class="user-role">바로스 · 관리자</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 브레드크럼 -->
+  <div class="breadcrumb" id="breadcrumb">
+    <span class="bc-item active">전체 센터</span>
+  </div>
+
+  <!-- 피킹 페이지 -->
+  <div class="content" id="page-picking">
+
+    <!-- 필터바 -->
+    <div class="filterbar">
+      <span class="filter-label">기간</span>
+      <div class="period-tabs">
+        <button class="ptab active" onclick="setPeriod('1d',this)">1일</button>
+        <button class="ptab" onclick="setPeriod('week',this)">주간</button>
+        <button class="ptab" onclick="setPeriod('month',this)">월간</button>
+        <button class="ptab" onclick="setPeriod('custom',this)">직접지정</button>
+      </div>
+      <div class="date-ctrl" id="singleDateCtrl">
+        <button class="date-btn" onclick="changeDate(-1)">‹</button>
+        <select class="filter-sel" id="dateSelect" onchange="loadAll()"></select>
+        <button class="date-btn" onclick="changeDate(1)">›</button>
+      </div>
+      <div class="date-range-row" id="customDateCtrl" style="display:none">
+        <input type="date" class="date-from" id="dateFrom">
+        <span class="date-range-label">~</span>
+        <input type="date" class="date-to" id="dateTo">
+        <button class="ptab active" style="padding:5px 12px;border-radius:5px;background:var(--orange);color:#fff;border:none;cursor:pointer;font-family:inherit" onclick="loadAll()">조회</button>
+      </div>
+      <div class="filter-divider"></div>
+      <span class="filter-label">화주사</span>
+      <div class="owner-tabs">
+        <button class="otab active" onclick="setOwner('일룸',this)">일룸</button>
+        <button class="otab" onclick="setOwner('퍼시스',this)">퍼시스</button>
+      </div>
+    </div>
+
+    <!-- 뷰: 레벨0 전체센터 -->
+    <div id="view-centers">
+      <div class="kpi-row" id="kpiRow0">
+        <div class="loading" style="grid-column:1/-1"><div class="spinner"></div>로딩 중...</div>
+      </div>
+      <div class="sec-head" style="background:transparent;padding:0;border:none;margin-bottom:10px">
+        <div class="sec-title" style="font-size:12px;color:var(--text2)">센터를 클릭하면 Zone별 상세 현황을 확인할 수 있습니다</div>
+      </div>
+      <div class="center-grid" id="centerGrid">
+        <div class="loading" style="grid-column:1/-1"><div class="spinner"></div>로딩 중...</div>
+      </div>
+    </div>
+
+    <!-- 뷰: 레벨1 센터 상세 (Zone별) -->
+    <div id="view-zones" style="display:none">
+      <div class="kpi-row" id="kpiRow1">
+        <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="sec-card" style="margin-bottom:0">
+          <div class="sec-head">
+            <div class="sec-title"><div class="sec-dot orange"></div>Zone별 공당 피킹박스수 (건/hr)</div>
+          </div>
+          <div style="padding:14px;position:relative;height:200px">
+            <canvas id="prodChart" role="img" aria-label="공당 피킹박스수 차트"></canvas>
+          </div>
+        </div>
+        <div class="sec-card" style="margin-bottom:0">
+          <div class="sec-head">
+            <div class="sec-title"><div class="sec-dot blue"></div>Zone별 공당 피킹금액 (만원/hr)</div>
+          </div>
+          <div style="padding:14px;position:relative;height:200px">
+            <canvas id="amtChart" role="img" aria-label="공당 피킹금액 차트"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-head">
+          <div class="sec-title"><div class="sec-dot orange"></div>Zone별 피킹 현황</div>
+          <div class="sec-sub">Zone 행을 클릭하면 작업자별 상세를 확인할 수 있습니다</div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Zone</th>
+            <th>공당 피킹박스수</th>
+            <th>공당 피킹금액</th>
+            <th>피킹건수</th>
+            <th>피킹금액(만원)</th>
+            <th>실적시간(hr)</th>
+            <th>가동률</th>
+            <th>주간</th><th>야간</th>
+          </tr></thead>
+          <tbody id="zoneTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 뷰: 레벨2 Zone 상세 (작업자별) -->
+    <div id="view-workers" style="display:none">
+      <div class="kpi-row" id="kpiRow2">
+        <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-head">
+          <div class="sec-title"><div class="sec-dot green"></div>작업자별 피킹 현황</div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>작업자</th>
+            <th>근무</th>
+            <th>공당 피킹박스수</th>
+            <th>공당 피킹금액</th>
+            <th>피킹건수</th>
+            <th>실적시간(hr)</th>
+            <th>가동률</th>
+          </tr></thead>
+          <tbody id="workerTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-picking -->
+
+  <!-- 입고 준비중 -->
+  <div class="content" id="page-inbound" style="display:none">
+    <div class="empty-state" style="height:50vh">
+      <div style="font-size:36px">📦</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text2)">입고 생산성</div>
+      <div>준비 중입니다. 추후 업데이트 예정입니다.</div>
+    </div>
+  </div>
+
+  <!-- 센터비교 준비중 -->
+  <div class="content" id="page-compare" style="display:none">
+    <div class="empty-state" style="height:50vh">
+      <div style="font-size:36px">📊</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text2)">센터별 비교</div>
+      <div>준비 중입니다. 추후 업데이트 예정입니다.</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+const SB_URL = 'https://cmkvniakrrnccenofmsi.supabase.co'
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta3ZuaWFrcnJuY2Nlbm9mbXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMTQ5OTgsImV4cCI6MjA5NDY5MDk5OH0.CYckrmf_GLtGv9jeX8MSk-oIWbG5MJikmFr0qjCRoVQ'
+const { createClient } = supabase
+const db = createClient(SB_URL, SB_KEY)
+
+// 센터 목록 (확장용)
+const CENTERS = [
+  { id:'YA', name:'양지1센터', sub:'Yangji Center 1', hasData:true },
+  { id:'Y2', name:'양지2센터', sub:'Yangji Center 2', hasData:false },
+  { id:'Y3', name:'양지3센터', sub:'Yangji Center 3', hasData:false },
+  { id:'AN', name:'안성센터',  sub:'Anseong Center',  hasData:false },
+  { id:'SE', name:'평택센터',  sub:'Pyeongtaek Center', hasData:false },
+]
+
+let owner = '일룸'
+let period = '1d'
+let dates = []
+let selectedCenter = null
+let selectedZone = null
+let prodChart = null, amtChart = null
+
+// ── 초기화 ──────────────────────────────────────────
+async function init() {
+  const { data } = await db.from('zone_daily')
+    .select('work_date').order('work_date',{ascending:false}).limit(90)
+  if (!data?.length) return
+  dates = [...new Set(data.map(r=>r.work_date))].sort((a,b)=>b.localeCompare(a))
+  const sel = document.getElementById('dateSelect')
+  dates.forEach(d => {
+    const o = document.createElement('option')
+    o.value = d; o.textContent = d.replace(/-/g,'.')
+    sel.appendChild(o)
+  })
+  // 기본 날짜 범위
+  const today = new Date().toISOString().slice(0,10)
+  document.getElementById('dateTo').value = dates[0] || today
+  const m = new Date(); m.setDate(m.getDate()-7)
+  document.getElementById('dateFrom').value = m.toISOString().slice(0,10)
+  loadAll()
+}
+
+// ── 기간 제어 ──────────────────────────────────────
+function setPeriod(p, el) {
+  period = p
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active')
+  document.getElementById('singleDateCtrl').style.display = p==='custom'?'none':'flex'
+  document.getElementById('customDateCtrl').style.display = p==='custom'?'flex':'none'
+  if (p!=='custom') loadAll()
+}
+
+function changeDate(dir) {
+  const sel = document.getElementById('dateSelect')
+  const idx = dates.indexOf(sel.value)
+  const next = idx+dir
+  if (next>=0 && next<dates.length) { sel.value=dates[next]; loadAll() }
+}
+
+function setOwner(o,el) {
+  owner=o
+  document.querySelectorAll('.otab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active')
+  loadAll()
+}
+
+// ── 날짜 범위 계산 ──────────────────────────────────
+function getDateRange() {
+  if (period==='custom') {
+    return { from:document.getElementById('dateFrom').value, to:document.getElementById('dateTo').value }
+  }
+  const base = document.getElementById('dateSelect').value
+  if (!base) return { from:dates[0]||'', to:dates[0]||'' }
+  if (period==='1d') return { from:base, to:base }
+  const d = new Date(base)
+  if (period==='week') { const f=new Date(d); f.setDate(d.getDate()-6); return { from:f.toISOString().slice(0,10), to:base } }
+  if (period==='month') { const f=new Date(d); f.setDate(1); return { from:f.toISOString().slice(0,10), to:base } }
+  return { from:base, to:base }
+}
+
+// ── 전체 로드 ──────────────────────────────────────
+async function loadAll() {
+  if (selectedZone) { loadWorkers(); return }
+  if (selectedCenter) { loadZones(); return }
+  loadCenters()
+}
+
+// ── 레벨0: 전체 센터 ────────────────────────────────
+async function loadCenters() {
+  const { from, to } = getDateRange()
+  const { data } = await db.from('zone_daily')
+    .select('*')
+    .eq('owner',owner)
+    .gte('work_date',from).lte('work_date',to)
+  if (!data) return
+
+  const normal = data.filter(r=>r.zone!=='P/S')
+  const totalPick = normal.reduce((s,r)=>s+(r.pick_count||0),0)
+  const totalAct  = normal.reduce((s,r)=>s+(r.act_time_hr||0),0)
+  const totalAmt  = normal.reduce((s,r)=>s+(r.pick_amount||0),0)
+  const totalHC   = normal.reduce((s,r)=>s+(r.headcount_day||0)+(r.headcount_night||0),0)
+  const prodBox   = totalAct>0 ? totalPick/totalAct : 0
+  const prodAmt   = totalAct>0 ? totalAmt/totalAct : 0
+
+  document.getElementById('kpiRow0').innerHTML = `
+    <div class="kpi-card c-orange">
+      <div class="kpi-head"><span class="kpi-lbl">공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div>
+      <div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div>
+      <div class="kpi-sub">총 ${totalPick.toLocaleString()}건 / ${totalAct.toFixed(1)}hr</div>
+    </div>
+    <div class="kpi-card c-blue">
+      <div class="kpi-head"><span class="kpi-lbl">공당 피킹금액</span><div class="kpi-ico c-blue">💰</div></div>
+      <div class="kpi-val">${Math.round(prodAmt).toLocaleString()}<span class="kpi-unit">만원/hr</span></div>
+      <div class="kpi-sub">총 ${totalAmt.toLocaleString()}만원</div>
+    </div>
+    <div class="kpi-card c-green">
+      <div class="kpi-head"><span class="kpi-lbl">총 피킹건수</span><div class="kpi-ico c-green">📋</div></div>
+      <div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div>
+      <div class="kpi-sub">기간: ${from===to?from:from+' ~ '+to}</div>
+    </div>
+    <div class="kpi-card c-purple">
+      <div class="kpi-head"><span class="kpi-lbl">총 투입인원</span><div class="kpi-ico c-purple">👥</div></div>
+      <div class="kpi-val">${totalHC}<span class="kpi-unit">명</span></div>
+      <div class="kpi-sub">실적 집계 기준</div>
+    </div>
+  `
+
+  // 센터 카드
+  const yaData = normal
+  const yaPick = yaData.reduce((s,r)=>s+(r.pick_count||0),0)
+  const yaAct  = yaData.reduce((s,r)=>s+(r.act_time_hr||0),0)
+  const yaAmt  = yaData.reduce((s,r)=>s+(r.pick_amount||0),0)
+  const yaBph  = yaAct>0 ? (yaPick/yaAct).toFixed(1) : '—'
+  const yaAph  = yaAct>0 ? Math.round(yaAmt/yaAct).toLocaleString() : '—'
+
+  document.getElementById('centerGrid').innerHTML = CENTERS.map(c => {
+    if (c.id==='YA') return `
+      <div class="center-card has-data" onclick="drillCenter('${c.id}','${c.name}')">
+        <div class="center-card-head">
+          <span class="center-badge active"><span class="center-badge-dot"></span>운영중</span>
+          <span style="font-size:11px;color:var(--orange)">상세보기 →</span>
+        </div>
+        <div class="center-name">${c.name}</div>
+        <div class="center-sub">${c.sub}</div>
+        <div class="center-metrics">
+          <div class="center-metric"><div class="center-metric-lbl">공당 피킹박스수</div><div class="center-metric-val">${yaBph}<span class="center-metric-unit">건/hr</span></div></div>
+          <div class="center-metric"><div class="center-metric-lbl">공당 피킹금액</div><div class="center-metric-val">${yaAph}<span class="center-metric-unit">만원/hr</span></div></div>
+          <div class="center-metric"><div class="center-metric-lbl">총 피킹건수</div><div class="center-metric-val">${yaPick.toLocaleString()}<span class="center-metric-unit">건</span></div></div>
+          <div class="center-metric"><div class="center-metric-lbl">실적시간</div><div class="center-metric-val">${yaAct.toFixed(1)}<span class="center-metric-unit">hr</span></div></div>
+        </div>
+      </div>`
+    return `
+      <div class="center-card no-data">
+        <div class="center-card-head">
+          <span class="center-badge inactive"><span class="center-badge-dot"></span>준비중</span>
+        </div>
+        <div class="center-name">${c.name}</div>
+        <div class="center-sub">${c.sub}</div>
+        <div class="center-metrics">
+          <div class="center-metric"><div class="center-metric-lbl">공당 피킹박스수</div><div class="center-metric-val" style="color:var(--text3)">—</div></div>
+          <div class="center-metric"><div class="center-metric-lbl">공당 피킹금액</div><div class="center-metric-val" style="color:var(--text3)">—</div></div>
+        </div>
+        <div class="center-coming">데이터 연동 준비중</div>
+      </div>`
+  }).join('')
+}
+
+// ── 레벨1: Zone 상세 ────────────────────────────────
+function drillCenter(centerId, centerName) {
+  selectedCenter = { id:centerId, name:centerName }
+  selectedZone = null
+  setBreadcrumb([{label:'전체 센터',fn:backToAll},{label:centerName,fn:null}])
+  showView('zones')
+  loadZones()
+}
+
+async function loadZones() {
+  const { from, to } = getDateRange()
+  const { data } = await db.from('zone_daily')
+    .select('*').eq('owner',owner)
+    .gte('work_date',from).lte('work_date',to)
+    .order('zone')
+  if (!data) return
+
+  // 기간 집계 (zone별 합산)
+  const zoneMap = {}
+  data.filter(r=>r.zone!=='P/S').forEach(r => {
+    if (!zoneMap[r.zone]) zoneMap[r.zone] = { zone:r.zone, std:0, act:0, pick:0, amt:0, hd:0, hn:0, eff_sum:0, eff_cnt:0 }
+    const z = zoneMap[r.zone]
+    z.std  += r.std_time_hr||0; z.act  += r.act_time_hr||0
+    z.pick += r.pick_count||0;  z.amt  += r.pick_amount||0
+    z.hd   += r.headcount_day||0; z.hn += r.headcount_night||0
+    if (r.efficiency) { z.eff_sum += r.efficiency; z.eff_cnt++ }
+  })
+  const zones = Object.values(zoneMap)
+
+  // KPI
+  const totalPick = zones.reduce((s,z)=>s+z.pick,0)
+  const totalAct  = zones.reduce((s,z)=>s+z.act,0)
+  const totalAmt  = zones.reduce((s,z)=>s+z.amt,0)
+  const totalStd  = zones.reduce((s,z)=>s+z.std,0)
+  const totalEff  = totalAct>0 ? totalStd/totalAct*100 : 0
+  const prodBox   = totalAct>0 ? totalPick/totalAct : 0
+  const prodAmt   = totalAct>0 ? totalAmt/totalAct : 0
+
+  document.getElementById('kpiRow1').innerHTML = `
+    <div class="kpi-card c-orange">
+      <div class="kpi-head"><span class="kpi-lbl">공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div>
+      <div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div>
+      <div class="kpi-sub">총 ${totalPick.toLocaleString()}건 / ${totalAct.toFixed(1)}hr</div>
+    </div>
+    <div class="kpi-card c-blue">
+      <div class="kpi-head"><span class="kpi-lbl">공당 피킹금액</span><div class="kpi-ico c-blue">💰</div></div>
+      <div class="kpi-val">${Math.round(prodAmt).toLocaleString()}<span class="kpi-unit">만원/hr</span></div>
+      <div class="kpi-sub">총 ${totalAmt.toLocaleString()}만원</div>
+    </div>
+    <div class="kpi-card c-green">
+      <div class="kpi-head"><span class="kpi-lbl">총 피킹건수</span><div class="kpi-ico c-green">📋</div></div>
+      <div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div>
+      <div class="kpi-sub">${zones.length}개 Zone 집계</div>
+    </div>
+    <div class="kpi-card c-purple">
+      <div class="kpi-head"><span class="kpi-lbl">전체 가동률 (보조)</span><div class="kpi-ico c-purple">⚡</div></div>
+      <div class="kpi-val">${totalEff.toFixed(1)}<span class="kpi-unit">%</span></div>
+      <div class="kpi-sub">표준 ${totalStd.toFixed(1)}hr / 실적 ${totalAct.toFixed(1)}hr</div>
+    </div>
+  `
+
+  // 차트
+  const labels = zones.map(z=>z.zone)
+  const bphArr = zones.map(z=>z.act>0?parseFloat((z.pick/z.act).toFixed(1)):0)
+  const aphArr = zones.map(z=>z.act>0?parseFloat((z.amt/z.act).toFixed(0)):0)
+
+  if (prodChart) prodChart.destroy()
+  prodChart = new Chart(document.getElementById('prodChart'),{
+    type:'bar', data:{labels, datasets:[{data:bphArr, backgroundColor:'rgba(255,107,53,0.2)', borderColor:'#ff6b35', borderWidth:1.5, borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#6b7280',font:{size:11,family:'Noto Sans KR'}},grid:{color:'#f0f2f8'}},
+              y:{ticks:{color:'#6b7280',font:{size:11}},grid:{color:'#f0f2f8'}}}}
+  })
+  if (amtChart) amtChart.destroy()
+  amtChart = new Chart(document.getElementById('amtChart'),{
+    type:'bar', data:{labels, datasets:[{data:aphArr, backgroundColor:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', borderWidth:1.5, borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#6b7280',font:{size:11,family:'Noto Sans KR'}},grid:{color:'#f0f2f8'}},
+              y:{ticks:{color:'#6b7280',font:{size:11}},grid:{color:'#f0f2f8'}}}}
+  })
+
+  // 테이블
+  const effColor = v => !v?'#9ca3af':v>=90?'#22c55e':v>=70?'#3b82f6':v>=50?'#f59e0b':'#ef4444'
+  document.getElementById('zoneTableBody').innerHTML = zones.map(z => {
+    const bph = z.act>0?(z.pick/z.act).toFixed(1):'—'
+    const aph = z.act>0?Math.round(z.amt/z.act).toLocaleString():'—'
+    const eff = z.eff_cnt>0 ? z.eff_sum/z.eff_cnt : (z.act>0 ? z.std/z.act*100 : 0)
+    const col = effColor(eff)
+    return `<tr class="tbl-row-click" onclick="drillZone('${z.zone}')">
+      <td><span class="zone-tag">${z.zone}</span></td>
+      <td style="color:var(--orange);font-weight:600">${bph}</td>
+      <td style="color:var(--blue);font-weight:600">${aph}</td>
+      <td>${z.pick.toLocaleString()}</td>
+      <td>${z.amt.toLocaleString()}</td>
+      <td>${z.act.toFixed(2)}</td>
+      <td><div class="eff-wrap">
+        <div class="eff-bar"><div class="eff-fill" style="width:${Math.min(eff,100)}%;background:${col}"></div></div>
+        <span class="eff-num" style="color:${col}">${eff>0?eff.toFixed(1)+'%':'—'}</span>
+      </div></td>
+      <td>${z.hd}명</td><td>${z.hn}명</td>
+    </tr>`
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:#9ca3af">데이터 없음</td></tr>'
+}
+
+// ── 레벨2: 작업자 상세 ─────────────────────────────
+function drillZone(zoneName) {
+  selectedZone = zoneName
+  setBreadcrumb([
+    {label:'전체 센터', fn:backToAll},
+    {label:selectedCenter.name, fn:backToCenter},
+    {label:zoneName+' Zone', fn:null}
+  ])
+  showView('workers')
+  loadWorkers()
+}
+
+async function loadWorkers() {
+  const { from, to } = getDateRange()
+  const { data } = await db.from('worker_daily')
+    .select('*').eq('owner',owner).eq('zone',selectedZone)
+    .gte('work_date',from).lte('work_date',to)
+    .order('pick_count',{ascending:false})
+  if (!data) return
+
+  // 작업자별 기간 집계
+  const wMap = {}
+  data.forEach(r => {
+    const k = r.worker_name
+    if (!wMap[k]) wMap[k]={name:k,shift:r.shift,std:0,act:0,pick:0,eff_sum:0,eff_cnt:0}
+    const w=wMap[k]
+    w.std+=r.std_time_hr||0; w.act+=r.act_time_hr||0; w.pick+=r.pick_count||0
+    if(r.efficiency){w.eff_sum+=r.efficiency;w.eff_cnt++}
+  })
+  const workers = Object.values(wMap).sort((a,b)=>b.pick-a.pick)
+
+  const totalPick = workers.reduce((s,w)=>s+w.pick,0)
+  const totalAct  = workers.reduce((s,w)=>s+w.act,0)
+  const prodBox   = totalAct>0?totalPick/totalAct:0
+
+  document.getElementById('kpiRow2').innerHTML = `
+    <div class="kpi-card c-orange">
+      <div class="kpi-head"><span class="kpi-lbl">${selectedZone} 공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div>
+      <div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div>
+      <div class="kpi-sub">총 ${totalPick.toLocaleString()}건</div>
+    </div>
+    <div class="kpi-card c-blue">
+      <div class="kpi-head"><span class="kpi-lbl">투입 작업자</span><div class="kpi-ico c-blue">👥</div></div>
+      <div class="kpi-val">${workers.length}<span class="kpi-unit">명</span></div>
+      <div class="kpi-sub">주간 ${workers.filter(w=>w.shift==='주간').length}명 · 야간 ${workers.filter(w=>w.shift==='야간').length}명</div>
+    </div>
+    <div class="kpi-card c-green">
+      <div class="kpi-head"><span class="kpi-lbl">총 실적시간</span><div class="kpi-ico c-green">⏱️</div></div>
+      <div class="kpi-val">${totalAct.toFixed(1)}<span class="kpi-unit">hr</span></div>
+      <div class="kpi-sub">Zone: ${selectedZone}</div>
+    </div>
+    <div class="kpi-card c-purple">
+      <div class="kpi-head"><span class="kpi-lbl">1인 평균 피킹</span><div class="kpi-ico c-purple">📋</div></div>
+      <div class="kpi-val">${workers.length>0?Math.round(totalPick/workers.length).toLocaleString():'—'}<span class="kpi-unit">건</span></div>
+      <div class="kpi-sub">작업자당 평균</div>
+    </div>
+  `
+
+  const effColor = v=>!v?'#9ca3af':v>=90?'#22c55e':v>=70?'#3b82f6':v>=50?'#f59e0b':'#ef4444'
+  document.getElementById('workerTableBody').innerHTML = workers.map(w => {
+    const bph = w.act>0?(w.pick/w.act).toFixed(1):'—'
+    const eff = w.eff_cnt>0?w.eff_sum/w.eff_cnt:(w.act>0?w.std/w.act*100:0)
+    const col = effColor(eff)
+    const shiftEl = w.shift==='주간'
+      ? `<span class="shift-day">주간</span>`
+      : `<span class="shift-night">야간</span>`
+    return `<tr>
+      <td>${w.name}</td>
+      <td>${shiftEl}</td>
+      <td style="color:var(--orange);font-weight:600">${bph}</td>
+      <td>—</td>
+      <td>${w.pick.toLocaleString()}</td>
+      <td>${w.act.toFixed(2)}</td>
+      <td><div class="eff-wrap">
+        <div class="eff-bar"><div class="eff-fill" style="width:${Math.min(eff,100)}%;background:${col}"></div></div>
+        <span class="eff-num" style="color:${col}">${eff>0?eff.toFixed(1)+'%':'—'}</span>
+      </div></td>
+    </tr>`
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#9ca3af">데이터 없음</td></tr>'
+}
+
+// ── 브레드크럼 & 뷰 전환 ──────────────────────────
+function setBreadcrumb(items) {
+  document.getElementById('breadcrumb').innerHTML = items.map((item, i) => {
+    const isLast = i === items.length-1
+    const sep = i>0 ? '<span class="bc-sep"> › </span>' : ''
+    if (isLast) return sep + `<span class="bc-item active">${item.label}</span>`
+    return sep + `<span class="bc-item" onclick="${item.fn.name}()">${item.label}</span>`
+  }).join('')
+}
+
+function backToAll() {
+  selectedCenter = null; selectedZone = null
+  setBreadcrumb([{label:'전체 센터', fn:null}])
+  showView('centers')
+  loadCenters()
+}
+
+function backToCenter() {
+  selectedZone = null
+  setBreadcrumb([{label:'전체 센터',fn:backToAll},{label:selectedCenter.name,fn:null}])
+  showView('zones')
+  loadZones()
+}
+
+function showView(view) {
+  ['centers','zones','workers'].forEach(v => {
+    document.getElementById('view-'+v).style.display = v===view?'':'none'
+  })
+}
+
+// ── 페이지 전환 ──────────────────────────────────
+function navTo(page, el) {
+  ['picking','inbound','compare'].forEach(p => {
+    document.getElementById('page-'+p).style.display = p===page?'':'none'
+  })
+  document.querySelectorAll('.nav-child').forEach(c=>c.classList.remove('active'))
+  el.classList.add('active')
+  const titles = {picking:'피킹 생산성 대시보드',inbound:'입고 생산성 대시보드',compare:'센터별 비교 분석'}
+  document.getElementById('pageTitle').textContent = titles[page]
+  if (page==='picking') { backToAll() }
+}
+
+init()
+</script>
+</body>
+</html>

@@ -183,7 +183,7 @@ tr:last-child td{border-bottom:none}
 <!-- 사이드바 -->
 <nav class="sidebar">
   <div class="logo">
-    <div class="logo-main">LETUS <em>WMS</em></div>
+    <div class="logo-main">LETUS <em>LOGISTICS</em></div>
     <div class="logo-sub">PRODUCTIVITY ANALYTICS</div>
   </div>
   <div class="search-wrap">
@@ -274,7 +274,8 @@ tr:last-child td{border-bottom:none}
       <div class="filter-divider"></div>
       <span class="filter-label">화주사</span>
       <div class="owner-tabs">
-        <button class="otab active" onclick="setOwner('일룸',this)">일룸</button>
+        <button class="otab active" onclick="setOwner('전체',this)">전체</button>
+        <button class="otab" onclick="setOwner('일룸',this)">일룸</button>
         <button class="otab" onclick="setOwner('퍼시스',this)">퍼시스</button>
       </div>
     </div>
@@ -397,7 +398,7 @@ const CENTERS = [
   { id:'SE', name:'평택센터',  sub:'Pyeongtaek Center', hasData:false },
 ]
 
-let owner = '일룸'
+let owner = '전체'
 let period = '1d'
 let dates = []
 let selectedCenter = null
@@ -473,10 +474,9 @@ async function loadAll() {
 async function loadCenters() {
   const { from, to } = getDateRange() || {}
   if (!from || !to) return
-  const { data } = await db.from('zone_daily')
-    .select('*')
-    .eq('owner',owner)
-    .gte('work_date',from).lte('work_date',to)
+  let q0 = db.from('zone_daily').select('*')
+  if (owner !== '전체') q0 = q0.eq('owner', owner)
+  const { data } = await q0.gte('work_date',from).lte('work_date',to)
   if (!data) return
 
   const normal = data.filter(r=>r.zone!=='P/S')
@@ -562,10 +562,9 @@ function drillCenter(centerId, centerName) {
 async function loadZones() {
   const { from, to } = getDateRange() || {}
   if (!from || !to) return
-  const { data } = await db.from('zone_daily')
-    .select('*').eq('owner',owner)
-    .gte('work_date',from).lte('work_date',to)
-    .order('zone')
+  let q1 = db.from('zone_daily').select('*')
+  if (owner !== '전체') q1 = q1.eq('owner', owner)
+  const { data } = await q1.gte('work_date',from).lte('work_date',to).order('zone')
   if (!data) return
 
   // 기간 집계 (zone별 합산)
@@ -585,9 +584,14 @@ async function loadZones() {
   const totalAct  = zones.reduce((s,z)=>s+z.act,0)
   const totalAmt  = zones.reduce((s,z)=>s+z.amt,0)
   const totalStd  = zones.reduce((s,z)=>s+z.std,0)
-  const totalEff  = totalAct>0 ? totalStd/totalAct*100 : 0
-  const prodBox   = totalAct>0 ? totalPick/totalAct : 0
-  const prodAmt   = totalAct>0 ? totalAmt/totalAct : 0
+  const totalEff     = totalAct>0 ? totalStd/totalAct*100 : 0
+  const prodBox      = totalAct>0 ? totalPick/totalAct : 0
+  const prodAmt      = totalAct>0 ? totalAmt/totalAct : 0
+  const totalHCDay   = zones.reduce((s,z)=>s+z.hd,0)
+  const totalHCNight = zones.reduce((s,z)=>s+z.hn,0)
+  const kpi4 = owner === '일룸'
+    ? `<div class="kpi-card c-purple"><div class="kpi-head"><span class="kpi-lbl">주간 / 야간 투입인원</span><div class="kpi-ico c-purple">👥</div></div><div class="kpi-val">${totalHCDay}<span class="kpi-unit">명</span> · ${totalHCNight}<span class="kpi-unit">명</span></div><div class="kpi-sub">주간 ${totalHCDay}명 · 야간 ${totalHCNight}명</div></div>`
+    : `<div class="kpi-card c-purple"><div class="kpi-head"><span class="kpi-lbl">전체 가동률 (보조)</span><div class="kpi-ico c-purple">⚡</div></div><div class="kpi-val">${totalEff.toFixed(1)}<span class="kpi-unit">%</span></div><div class="kpi-sub">표준 ${totalStd.toFixed(1)}hr / 실적 ${totalAct.toFixed(1)}hr</div></div>`
 
   document.getElementById('kpiRow1').innerHTML = `
     <div class="kpi-card c-orange">
@@ -605,11 +609,7 @@ async function loadZones() {
       <div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div>
       <div class="kpi-sub">${zones.length}개 Zone 집계</div>
     </div>
-    <div class="kpi-card c-purple">
-      <div class="kpi-head"><span class="kpi-lbl">전체 가동률 (보조)</span><div class="kpi-ico c-purple">⚡</div></div>
-      <div class="kpi-val">${totalEff.toFixed(1)}<span class="kpi-unit">%</span></div>
-      <div class="kpi-sub">표준 ${totalStd.toFixed(1)}hr / 실적 ${totalAct.toFixed(1)}hr</div>
-    </div>
+    ${kpi4}
   `
 
   // 차트
@@ -670,8 +670,9 @@ function drillZone(zoneName) {
 async function loadWorkers() {
   const { from, to } = getDateRange() || {}
   if (!from || !to) return
-  const { data } = await db.from('worker_daily')
-    .select('*').eq('owner',owner).eq('zone',selectedZone)
+  let q2 = db.from('worker_daily').select('*')
+  if (owner !== '전체') q2 = q2.eq('owner', owner)
+  const { data } = await q2.eq('zone',selectedZone)
     .gte('work_date',from).lte('work_date',to)
     .order('pick_count',{ascending:false})
   if (!data) return

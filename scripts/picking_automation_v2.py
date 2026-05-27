@@ -23,6 +23,7 @@ from pathlib import Path
 import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
+from openpyxl import load_workbook
 from psycopg2.extras import execute_values
 
 BASE_DIR = Path(__file__).parent.parent
@@ -623,25 +624,31 @@ def run_for_date(target: date) -> dict:
     return all_results
 
 
-# ── 검증 (2026-05-12 기준값 대비) ─────────────────────────────────────
-EXPECTED_STD: dict[str, float] = {
-    "E-F": 17.34, "J-K": 19.29, "L": 5.87, "B": 1.59, "L/S": 4.46,
-    "H-I": 18.82, "C-D": 40.03, "A-P": 21.79, "DPS": 48.57,
-    "M-N": 32.22, "S":   13.21,
-    "W":   3.34,  "R":   4.61,
-}
+# ── 검증 ──────────────────────────────────────────────────────────────
+def _read_master_std(xlsx_path: Path, zone_rows: dict) -> dict[str, float]:
+    """마스터 파일 종합실적 D열 캐시값을 기준으로 읽기 (수식 재계산 없음)."""
+    wb = load_workbook(xlsx_path, read_only=True, data_only=True)
+    ws = wb["종합실적"]
+    result = {}
+    for zone, (std_row, _) in zone_rows.items():
+        v = ws.cell(row=std_row, column=4).value
+        result[zone] = float(v) if isinstance(v, (int, float)) else 0.0
+    wb.close()
+    return result
 
 
 def validate(results: dict, date_str: str):
-    if date_str != "2026-05-12":
-        return
+    baseline = {
+        **_read_master_std(MASTER1, ZONE_ROWS_1),
+        **_read_master_std(MASTER2, ZONE_ROWS_2),
+    }
     print(f"\n{'='*60}")
-    print("검증 결과 (표준시간 기준값 대비 ±1% 목표)")
+    print(f"검증 결과 (마스터 기준값 대비 ±1% 목표)")
     print(f"  {'zone':<6} {'기준':>8} {'실측':>8} {'오차%':>8}  판정")
     print("  " + "-" * 48)
     all_pass = True
-    for zone in sorted(EXPECTED_STD):
-        exp = EXPECTED_STD[zone]
+    for zone in sorted(baseline):
+        exp = baseline[zone]
         got = results.get(zone, {}).get("std_time_hr", 0.0)
         pct = abs(got - exp) / exp * 100 if exp > 0 else 0.0
         ok  = pct <= 1.0

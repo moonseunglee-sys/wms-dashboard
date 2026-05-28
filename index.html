@@ -179,15 +179,11 @@ tr:last-child td{border-bottom:none}
 .date-range-label{font-size:12px;color:var(--text3)}
 
 /* ── CBM 전용 스타일 ── */
-.cbm-header{background:linear-gradient(135deg,#1B3A6B 0%,#1A6870 100%);padding:20px 24px;margin:-20px -24px 20px;color:#fff}
-.cbm-header-inner{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.cbm-header-title{font-size:18px;font-weight:700}
-.cbm-header-meta{font-size:12px;color:rgba(255,255,255,0.6)}
-.cbm-tab-bar{display:flex;gap:0;border-top:1px solid rgba(255,255,255,0.1);margin:0 -24px;padding:0 24px}
-.cbm-tab{padding:10px 20px;background:transparent;border:none;color:rgba(255,255,255,0.55);cursor:pointer;font-size:13px;font-weight:500;border-bottom:3px solid transparent;transition:all .2s;font-family:inherit}
-.cbm-tab.active{color:#fff;border-bottom:3px solid #4A9FE0;font-weight:700}
-.cbm-tab:hover{color:rgba(255,255,255,0.85)}
-.cbm-body{padding-top:4px}
+.cbm-tab-bar{display:flex;background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)}
+.cbm-tab{flex:1;padding:10px 16px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;border-bottom:3px solid transparent;transition:all .2s;font-family:inherit}
+.cbm-tab.active{color:var(--orange);border-bottom:3px solid var(--orange);font-weight:700;background:var(--orange-bg)}
+.cbm-tab:hover:not(.active){background:var(--bg);color:var(--text)}
+.cbm-body{}
 
 .cbm-summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .cbm-summary-card{flex:1 1 160px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 20px;box-shadow:var(--shadow)}
@@ -429,38 +425,21 @@ tr:last-child td{border-bottom:none}
   <!-- ══════════ CBM 관리 페이지 ══════════ -->
   <div class="content" id="page-cbm" style="display:none">
 
-    <!-- CBM 헤더 -->
-    <div class="cbm-header">
-      <div class="cbm-header-inner">
-        <div>
-          <div style="font-size:10px;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-bottom:3px">LOGISTICS</div>
-          <div class="cbm-header-title">CBM 측정 관리 대시보드</div>
-        </div>
-        <div class="cbm-header-meta">물류사업팀 · 실측 기준 DB</div>
-      </div>
-      <div class="cbm-tab-bar">
-        <button class="cbm-tab active" onclick="cbmTab('dashboard',this)">📊 현황</button>
-        <button class="cbm-tab" onclick="cbmTab('list',this)">🔍 조회 / 리스트</button>
-        <button class="cbm-tab" onclick="cbmTab('upload',this)">📂 WMS 업로드</button>
-      </div>
+    <!-- CBM 탭바 -->
+    <div class="cbm-tab-bar">
+      <button class="cbm-tab active" onclick="cbmTab('dashboard',this)">📊 현황</button>
+      <button class="cbm-tab" onclick="cbmTab('list',this)">🔍 조회 / 리스트</button>
+      <button class="cbm-tab" onclick="cbmTab('upload',this)">📂 WMS 업로드</button>
     </div>
 
     <div class="cbm-body">
 
       <!-- CBM 탭1: 대시보드 -->
       <div id="cbm-dashboard">
-        <div class="cbm-summary-row" id="cbmSummaryRow">
-          <div class="loading" style="flex:1"><div class="spinner"></div>로딩 중...</div>
+        <div class="kpi-row" id="cbmSummaryRow" style="margin-bottom:16px">
+          <div class="loading" style="grid-column:1/-1"><div class="spinner"></div>로딩 중...</div>
         </div>
-        <div class="cbm-progress-wrap" id="cbmProgressWrap" style="display:none">
-          <div class="cbm-progress-label">
-            <span>전체 측정 진행률</span>
-            <span id="cbmPctLabel" style="color:#1B3A6B;font-weight:700"></span>
-          </div>
-          <div class="cbm-progress-bg">
-            <div class="cbm-progress-bar" id="cbmProgressBar" style="background:#1B3A6B"></div>
-          </div>
-        </div>
+
         <div class="cbm-section-title">브랜드별 측정 현황</div>
         <div class="cbm-brand-grid" id="cbmBrandGrid">
           <div class="loading"><div class="spinner"></div></div>
@@ -865,16 +844,25 @@ async function cbmInit() {
   cbmInited = true
 
   // Supabase cbm_master 테이블 로드
-  const { data, error } = await db.from('cbm_master')
-    .select('brand,code,dept,prod_type,stock_type,has_data,w_mm,d_mm,h_mm,kg')
-    .order('brand').order('code')
-
-  if (error || !data) {
-    document.getElementById('cbmSummaryRow').innerHTML = `<div style="color:var(--red);padding:16px">⚠ cbm_master 테이블을 찾을 수 없습니다. Supabase에 테이블을 먼저 생성해주세요.</div>`
-    return
+  // 1000개 limit 우회: 페이지네이션으로 전체 로드
+  let allData = []
+  let from = 0
+  const pageSize = 1000
+  while (true) {
+    const { data, error } = await db.from('cbm_master')
+      .select('brand,code,dept,prod_type,stock_type,has_data,w_mm,d_mm,h_mm,kg')
+      .order('brand').order('code')
+      .range(from, from + pageSize - 1)
+    if (error) {
+      document.getElementById('cbmSummaryRow').innerHTML = `<div style="color:var(--red);padding:16px">⚠ cbm_master 테이블을 찾을 수 없습니다. Supabase에 테이블을 먼저 생성해주세요.</div>`
+      return
+    }
+    if (!data || data.length === 0) break
+    allData = allData.concat(data)
+    if (data.length < pageSize) break
+    from += pageSize
   }
-
-  cbmData = data
+  cbmData = allData
   cbmRenderDashboard()
   cbmRenderBrandFilter()
   cbmRenderTable()
@@ -885,27 +873,24 @@ function cbmRenderDashboard() {
   const measured = cbmData.filter(r=>r.has_data).length
   const pct = total ? Math.round(measured/total*100) : 0
 
+  const unmeasured = total - measured
   document.getElementById('cbmSummaryRow').innerHTML = `
-    <div class="cbm-summary-card">
-      <div class="cbm-summary-num">${total.toLocaleString()}</div>
-      <div class="cbm-summary-label">전체 품목 (단품코드 기준)</div>
+    <div class="kpi-card c-blue">
+      <div class="kpi-head"><span class="kpi-lbl">전체 등록 품목</span><div class="kpi-ico c-blue">📦</div></div>
+      <div class="kpi-val">${total.toLocaleString()}<span class="kpi-unit">개</span></div>
+      <div class="kpi-sub">단품코드 기준</div>
     </div>
-    <div class="cbm-summary-card" style="background:#E0F0F2;border-color:#A8D8D8">
-      <div class="cbm-summary-num" style="color:#1A6870">${measured.toLocaleString()}</div>
-      <div class="cbm-summary-label">측정 완료</div>
+    <div class="kpi-card c-green">
+      <div class="kpi-head"><span class="kpi-lbl">측정 완료</span><div class="kpi-ico c-green">✅</div></div>
+      <div class="kpi-val">${measured.toLocaleString()}<span class="kpi-unit">개</span></div>
+      <div class="kpi-sub">W·D·H·KG 실측 완료</div>
     </div>
-    <div class="cbm-summary-card" style="background:var(--red-bg);border-color:#fca5a5">
-      <div class="cbm-summary-num" style="color:var(--red)">${(total-measured).toLocaleString()}</div>
-      <div class="cbm-summary-label">미측정</div>
-    </div>
-    <div class="cbm-summary-card" style="background:#EEF2F8;border-color:#B0BDD8">
-      <div class="cbm-summary-num" style="color:#1B3A6B">${pct}%</div>
-      <div class="cbm-summary-label">전체 측정 완료율</div>
+    <div class="kpi-card c-orange">
+      <div class="kpi-head"><span class="kpi-lbl">미측정</span><div class="kpi-ico c-orange">⚠️</div></div>
+      <div class="kpi-val">${unmeasured.toLocaleString()}<span class="kpi-unit">개</span></div>
+      <div class="kpi-sub">측정 필요 품목</div>
     </div>`
 
-  document.getElementById('cbmProgressWrap').style.display = ''
-  document.getElementById('cbmPctLabel').textContent = pct + '%'
-  document.getElementById('cbmProgressBar').style.width = pct + '%'
 
   // 브랜드별 카드
   const brandMap = {}

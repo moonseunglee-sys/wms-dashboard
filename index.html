@@ -6,6 +6,7 @@
 <title>LETUS WMS · 피킹 생산성</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -176,6 +177,65 @@ tr:last-child td{border-bottom:none}
 /* 기간 직접 지정 */
 .date-range-row{display:flex;align-items:center;gap:6px}
 .date-range-label{font-size:12px;color:var(--text3)}
+
+/* ── CBM 전용 스타일 ── */
+.cbm-header{background:linear-gradient(135deg,#1B3A6B 0%,#1A6870 100%);padding:20px 24px;margin:-20px -24px 20px;color:#fff}
+.cbm-header-inner{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.cbm-header-title{font-size:18px;font-weight:700}
+.cbm-header-meta{font-size:12px;color:rgba(255,255,255,0.6)}
+.cbm-tab-bar{display:flex;gap:0;border-top:1px solid rgba(255,255,255,0.1);margin:0 -24px;padding:0 24px}
+.cbm-tab{padding:10px 20px;background:transparent;border:none;color:rgba(255,255,255,0.55);cursor:pointer;font-size:13px;font-weight:500;border-bottom:3px solid transparent;transition:all .2s;font-family:inherit}
+.cbm-tab.active{color:#fff;border-bottom:3px solid #4A9FE0;font-weight:700}
+.cbm-tab:hover{color:rgba(255,255,255,0.85)}
+.cbm-body{padding-top:4px}
+
+.cbm-summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.cbm-summary-card{flex:1 1 160px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 20px;box-shadow:var(--shadow)}
+.cbm-summary-num{font-size:28px;font-weight:900;color:#1B3A6B;line-height:1.1}
+.cbm-summary-label{font-size:12px;color:var(--text3);margin-top:4px}
+
+.cbm-progress-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.cbm-progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px}
+.cbm-progress-bg{height:8px;background:#E8ECF2;border-radius:4px;overflow:hidden}
+.cbm-progress-bar{height:100%;border-radius:4px;transition:width .6s ease}
+
+.cbm-section-title{font-size:13px;font-weight:700;color:#1B3A6B;border-left:3px solid #1B3A6B;padding-left:10px;margin:16px 0 10px}
+
+.cbm-brand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.cbm-brand-card{background:var(--white);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--border)}
+
+.cbm-search-box{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;box-shadow:var(--shadow)}
+.cbm-search-row{display:flex;gap:8px;margin-top:10px}
+.cbm-input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:monospace;outline:none;color:var(--text)}
+.cbm-input:focus{border-color:#1B3A6B}
+.cbm-btn-primary{padding:8px 18px;background:#1B3A6B;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:.15s}
+.cbm-btn-primary:hover{background:#142d54}
+.cbm-btn-secondary{padding:8px 16px;background:var(--white);color:#1B3A6B;border:1.5px solid #1B3A6B;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:.15s}
+.cbm-not-found{margin-top:10px;padding:10px 14px;background:var(--red-bg);border:1px solid #fca5a5;border-radius:6px;color:var(--red);font-size:13px}
+.cbm-result-card{margin-top:10px;padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
+.cbm-result-row{display:flex;flex-wrap:wrap;gap:6px 20px;margin-bottom:8px}
+.cbm-result-label{font-size:11px;color:var(--text3);min-width:50px}
+.cbm-result-val{font-size:13px;font-weight:600;color:var(--text);min-width:80px}
+
+.cbm-filter-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.cbm-filter-group{display:flex;gap:6px;flex-wrap:wrap}
+.cbm-filter-btn{padding:5px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all .15s;font-family:inherit}
+.cbm-filter-btn:hover{border-color:#1B3A6B;color:#1B3A6B}
+
+.cbm-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:auto;box-shadow:var(--shadow)}
+.cbm-table{width:100%;border-collapse:collapse;font-size:12px}
+.cbm-table th{background:#1B3A6B;color:#fff;padding:9px 10px;text-align:left;font-weight:700;white-space:nowrap;position:sticky;top:0}
+.cbm-table td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text2)}
+.cbm-table tr:last-child td{border-bottom:none}
+.cbm-table tr:hover td{background:#f8faff}
+.cbm-table-more{text-align:center;padding:10px;font-size:12px;color:var(--text3);border-top:1px solid var(--border)}
+
+.cbm-upload-guide{background:var(--blue-bg);border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7}
+.cbm-drop-zone{border:2px dashed #b0bdd8;border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;background:#fafbff;transition:border-color .2s;margin-bottom:20px}
+.cbm-drop-zone:hover{border-color:#1B3A6B}
+.cbm-brand-badge{padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700}
+.cbm-measured{background:#E0F0F2;color:#1A6870}
+.cbm-unmeasured{background:var(--red-bg);color:var(--red)}
 </style>
 </head>
 <body>
@@ -213,6 +273,16 @@ tr:last-child td{border-bottom:none}
         <button class="nav-child" onclick="navTo('inbound',this)">센터별 현황 <span class="nav-badge">준비중</span></button>
       </div>
     </div>
+    <div class="nav-section-label" style="margin-top:8px">물류 관리</div>
+    <div class="nav-group">
+      <button class="nav-grp-btn">
+        <div class="nav-grp-icon">📐 CBM 관리</div>
+        <span style="font-size:10px;color:rgba(255,255,255,0.2)">▾</span>
+      </button>
+      <div class="nav-children">
+        <button class="nav-child" onclick="navTo('cbm',this)">측정 현황 · 조회</button>
+      </div>
+    </div>
     <div class="nav-section-label" style="margin-top:8px">비교 분석</div>
     <div class="nav-group">
       <button class="nav-grp-btn">
@@ -248,10 +318,8 @@ tr:last-child td{border-bottom:none}
     <span class="bc-item active">전체 센터</span>
   </div>
 
-  <!-- 피킹 페이지 -->
+  <!-- ══════════ 피킹 페이지 ══════════ -->
   <div class="content" id="page-picking">
-
-    <!-- 필터바 -->
     <div class="filterbar">
       <span class="filter-label">기간</span>
       <div class="period-tabs">
@@ -280,7 +348,6 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
 
-    <!-- 뷰: 레벨0 전체센터 -->
     <div id="view-centers">
       <div class="kpi-row" id="kpiRow0">
         <div class="loading" style="grid-column:1/-1"><div class="spinner"></div>로딩 중...</div>
@@ -293,7 +360,6 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
 
-    <!-- 뷰: 레벨1 센터 상세 (Zone별) -->
     <div id="view-zones" style="display:none">
       <div class="kpi-row" id="kpiRow1">
         <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
@@ -304,7 +370,7 @@ tr:last-child td{border-bottom:none}
             <div class="sec-title"><div class="sec-dot orange"></div>Zone별 공당 피킹박스수 (건/hr)</div>
           </div>
           <div style="padding:14px;position:relative;height:200px">
-            <canvas id="prodChart" role="img" aria-label="공당 피킹박스수 차트"></canvas>
+            <canvas id="prodChart"></canvas>
           </div>
         </div>
         <div class="sec-card" style="margin-bottom:0">
@@ -312,7 +378,7 @@ tr:last-child td{border-bottom:none}
             <div class="sec-title"><div class="sec-dot blue"></div>Zone별 공당 피킹금액 (만원/hr)</div>
           </div>
           <div style="padding:14px;position:relative;height:200px">
-            <canvas id="amtChart" role="img" aria-label="공당 피킹금액 차트"></canvas>
+            <canvas id="amtChart"></canvas>
           </div>
         </div>
       </div>
@@ -323,21 +389,15 @@ tr:last-child td{border-bottom:none}
         </div>
         <table>
           <thead><tr>
-            <th>Zone</th>
-            <th>공당 피킹박스수</th>
-            <th>공당 피킹금액</th>
-            <th>피킹박스수</th>
-            <th>피킹금액(만원)</th>
-            <th>실적시간(hr)</th>
-            <th>가동률</th>
-            <th>주간</th><th>야간</th>
+            <th>Zone</th><th>공당 피킹박스수</th><th>공당 피킹금액</th>
+            <th>피킹박스수</th><th>피킹금액(만원)</th><th>실적시간(hr)</th>
+            <th>가동률</th><th>주간</th><th>야간</th>
           </tr></thead>
           <tbody id="zoneTableBody"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- 뷰: 레벨2 Zone 상세 (작업자별) -->
     <div id="view-workers" style="display:none">
       <div class="kpi-row" id="kpiRow2">
         <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
@@ -348,22 +408,16 @@ tr:last-child td{border-bottom:none}
         </div>
         <table>
           <thead><tr>
-            <th>작업자</th>
-            <th>근무</th>
-            <th>공당 피킹박스수</th>
-            <th>공당 피킹금액</th>
-            <th>피킹박스수</th>
-            <th>실적시간(hr)</th>
-            <th>가동률</th>
+            <th>작업자</th><th>근무</th><th>공당 피킹박스수</th><th>공당 피킹금액</th>
+            <th>피킹박스수</th><th>실적시간(hr)</th><th>가동률</th>
           </tr></thead>
           <tbody id="workerTableBody"></tbody>
         </table>
       </div>
     </div>
-
   </div><!-- /page-picking -->
 
-  <!-- 입고 준비중 -->
+  <!-- ══════════ 입고 준비중 ══════════ -->
   <div class="content" id="page-inbound" style="display:none">
     <div class="empty-state" style="height:50vh">
       <div style="font-size:36px">📦</div>
@@ -372,7 +426,105 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- 센터비교 준비중 -->
+  <!-- ══════════ CBM 관리 페이지 ══════════ -->
+  <div class="content" id="page-cbm" style="display:none">
+
+    <!-- CBM 헤더 -->
+    <div class="cbm-header">
+      <div class="cbm-header-inner">
+        <div>
+          <div style="font-size:10px;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-bottom:3px">LOGISTICS</div>
+          <div class="cbm-header-title">CBM 측정 관리 대시보드</div>
+        </div>
+        <div class="cbm-header-meta">물류사업팀 · 실측 기준 DB</div>
+      </div>
+      <div class="cbm-tab-bar">
+        <button class="cbm-tab active" onclick="cbmTab('dashboard',this)">📊 현황</button>
+        <button class="cbm-tab" onclick="cbmTab('list',this)">🔍 조회 / 리스트</button>
+        <button class="cbm-tab" onclick="cbmTab('upload',this)">📂 WMS 업로드</button>
+      </div>
+    </div>
+
+    <div class="cbm-body">
+
+      <!-- CBM 탭1: 대시보드 -->
+      <div id="cbm-dashboard">
+        <div class="cbm-summary-row" id="cbmSummaryRow">
+          <div class="loading" style="flex:1"><div class="spinner"></div>로딩 중...</div>
+        </div>
+        <div class="cbm-progress-wrap" id="cbmProgressWrap" style="display:none">
+          <div class="cbm-progress-label">
+            <span>전체 측정 진행률</span>
+            <span id="cbmPctLabel" style="color:#1B3A6B;font-weight:700"></span>
+          </div>
+          <div class="cbm-progress-bg">
+            <div class="cbm-progress-bar" id="cbmProgressBar" style="background:#1B3A6B"></div>
+          </div>
+        </div>
+        <div class="cbm-section-title">브랜드별 측정 현황</div>
+        <div class="cbm-brand-grid" id="cbmBrandGrid">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- CBM 탭2: 조회/리스트 -->
+      <div id="cbm-list" style="display:none">
+        <div class="cbm-search-box">
+          <div class="cbm-section-title" style="margin-top:0">단품코드 조회</div>
+          <div class="cbm-search-row">
+            <input class="cbm-input" id="cbmSearchInput" placeholder="단품코드 입력 (예: FHC015F)" onkeydown="if(event.key==='Enter')cbmSearch()">
+            <button class="cbm-btn-primary" onclick="cbmSearch()">조회</button>
+          </div>
+          <div id="cbmSearchResult"></div>
+        </div>
+
+        <div class="cbm-section-title">전체 리스트</div>
+        <div class="cbm-filter-row">
+          <div class="cbm-filter-group" id="cbmBrandFilter"></div>
+          <button class="cbm-btn-secondary" onclick="cbmDownloadDb()">⬇ 엑셀 다운로드</button>
+        </div>
+        <div class="cbm-table-wrap">
+          <table class="cbm-table">
+            <thead>
+              <tr>
+                <th>브랜드</th><th>단품코드</th><th>취합부서</th><th>재고구분</th>
+                <th style="text-align:right">W(mm)</th><th style="text-align:right">D(mm)</th>
+                <th style="text-align:right">H(mm)</th><th style="text-align:right">KG</th>
+                <th style="text-align:right">CBM</th><th style="text-align:center">측정</th>
+              </tr>
+            </thead>
+            <tbody id="cbmTableBody">
+              <tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr>
+            </tbody>
+          </table>
+          <div id="cbmTableMore" class="cbm-table-more" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- CBM 탭3: WMS 업로드 -->
+      <div id="cbm-upload" style="display:none">
+        <div class="cbm-upload-guide">
+          <b>사용법:</b> WMS에서 내보낸 재고 엑셀 파일을 업로드하면,
+          CBM 실측 데이터가 없는 품목만 추려서 브랜드별 집계와 측정 요청 리스트를 제공합니다.<br>
+          <span style="color:var(--text3);font-size:12px;margin-top:4px;display:block">
+            * WMS 파일의 A열에 단품코드가 있어야 합니다 (1행 헤더 제외).
+          </span>
+        </div>
+        <div class="cbm-drop-zone" onclick="document.getElementById('cbmFileInput').click()">
+          <input type="file" id="cbmFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="cbmHandleUpload(this)">
+          <div id="cbmDropContent">
+            <div style="font-size:36px;margin-bottom:8px">📂</div>
+            <div style="font-weight:700;color:#1B3A6B">클릭하여 WMS 파일 업로드</div>
+            <div style="color:var(--text3);font-size:12px;margin-top:4px">xlsx / xls / csv 지원</div>
+          </div>
+        </div>
+        <div id="cbmUploadResult"></div>
+      </div>
+
+    </div>
+  </div><!-- /page-cbm -->
+
+  <!-- ══════════ 센터비교 준비중 ══════════ -->
   <div class="content" id="page-compare" style="display:none">
     <div class="empty-state" style="height:50vh">
       <div style="font-size:36px">📊</div>
@@ -384,12 +536,12 @@ tr:last-child td{border-bottom:none}
 </div><!-- /main -->
 
 <script>
+// ── Supabase ──────────────────────────────────────────────────
 const SB_URL = 'https://cmkvniakrrnccenofmsi.supabase.co'
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta3ZuaWFrcnJuY2Nlbm9mbXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMTQ5OTgsImV4cCI6MjA5NDY5MDk5OH0.CYckrmf_GLtGv9jeX8MSk-oIWbG5MJikmFr0qjCRoVQ'
 const { createClient } = supabase
 const db = createClient(SB_URL, SB_KEY)
 
-// 센터 목록 (확장용)
 const CENTERS = [
   { id:'YA', name:'양지1센터', sub:'Yangji Center 1', hasData:true },
   { id:'Y2', name:'양지2센터', sub:'Yangji Center 2', hasData:false },
@@ -398,17 +550,13 @@ const CENTERS = [
   { id:'SE', name:'평택센터',  sub:'Pyeongtaek Center', hasData:false },
 ]
 
-let owner = '전체'
-let period = '1d'
-let dates = []
-let selectedCenter = null
-let selectedZone = null
+let owner = '전체', period = '1d', dates = []
+let selectedCenter = null, selectedZone = null
 let prodChart = null, amtChart = null
 
-// ── 초기화 ──────────────────────────────────────────
+// ── 피킹: 초기화 ─────────────────────────────────────────────
 async function init() {
-  const { data } = await db.from('zone_daily')
-    .select('work_date').order('work_date',{ascending:false}).limit(90)
+  const { data } = await db.from('zone_daily').select('work_date').order('work_date',{ascending:false}).limit(90)
   if (!data?.length) return
   dates = [...new Set(data.map(r=>r.work_date))].sort((a,b)=>b.localeCompare(a))
   const sel = document.getElementById('dateSelect')
@@ -417,7 +565,6 @@ async function init() {
     o.value = d; o.textContent = d.replace(/-/g,'.')
     sel.appendChild(o)
   })
-  // 기본 날짜 범위
   const today = new Date().toISOString().slice(0,10)
   document.getElementById('dateTo').value = dates[0] || today
   const m = new Date(); m.setDate(m.getDate()-7)
@@ -425,7 +572,6 @@ async function init() {
   loadAll()
 }
 
-// ── 기간 제어 ──────────────────────────────────────
 function setPeriod(p, el) {
   period = p
   document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'))
@@ -449,11 +595,8 @@ function setOwner(o,el) {
   loadAll()
 }
 
-// ── 날짜 범위 계산 ──────────────────────────────────
 function getDateRange() {
-  if (period==='custom') {
-    return { from:document.getElementById('dateFrom').value, to:document.getElementById('dateTo').value }
-  }
+  if (period==='custom') return { from:document.getElementById('dateFrom').value, to:document.getElementById('dateTo').value }
   const base = document.getElementById('dateSelect').value
   if (!base || !dates.length) return null
   if (period==='1d') return { from:base, to:base }
@@ -463,14 +606,12 @@ function getDateRange() {
   return { from:base, to:base }
 }
 
-// ── 전체 로드 ──────────────────────────────────────
 async function loadAll() {
   if (selectedZone) { loadWorkers(); return }
   if (selectedCenter) { loadZones(); return }
   loadCenters()
 }
 
-// ── 레벨0: 전체 센터 ────────────────────────────────
 async function loadCenters() {
   const { from, to } = getDateRange() || {}
   if (!from || !to) return
@@ -507,14 +648,11 @@ async function loadCenters() {
       <div class="kpi-head"><span class="kpi-lbl">총 투입인원</span><div class="kpi-ico c-purple">👥</div></div>
       <div class="kpi-val">${totalHC}<span class="kpi-unit">명</span></div>
       <div class="kpi-sub">실적 집계 기준</div>
-    </div>
-  `
+    </div>`
 
-  // 센터 카드
-  const yaData = normal
-  const yaPick = yaData.reduce((s,r)=>s+(r.pick_count||0),0)
-  const yaAct  = yaData.reduce((s,r)=>s+(r.act_time_hr||0),0)
-  const yaAmt  = yaData.reduce((s,r)=>s+(r.pick_amount||0),0)
+  const yaPick = normal.reduce((s,r)=>s+(r.pick_count||0),0)
+  const yaAct  = normal.reduce((s,r)=>s+(r.act_time_hr||0),0)
+  const yaAmt  = normal.reduce((s,r)=>s+(r.pick_amount||0),0)
   const yaBph  = yaAct>0 ? (yaPick/yaAct).toFixed(1) : '—'
   const yaAph  = yaAct>0 ? Math.round(yaAmt/yaAct).toLocaleString() : '—'
 
@@ -536,11 +674,8 @@ async function loadCenters() {
       </div>`
     return `
       <div class="center-card no-data">
-        <div class="center-card-head">
-          <span class="center-badge inactive"><span class="center-badge-dot"></span>준비중</span>
-        </div>
-        <div class="center-name">${c.name}</div>
-        <div class="center-sub">${c.sub}</div>
+        <div class="center-card-head"><span class="center-badge inactive"><span class="center-badge-dot"></span>준비중</span></div>
+        <div class="center-name">${c.name}</div><div class="center-sub">${c.sub}</div>
         <div class="center-metrics">
           <div class="center-metric"><div class="center-metric-lbl">공당 피킹박스수</div><div class="center-metric-val" style="color:var(--text3)">—</div></div>
           <div class="center-metric"><div class="center-metric-lbl">공당 피킹금액</div><div class="center-metric-val" style="color:var(--text3)">—</div></div>
@@ -550,13 +685,11 @@ async function loadCenters() {
   }).join('')
 }
 
-// ── 레벨1: Zone 상세 ────────────────────────────────
 function drillCenter(centerId, centerName) {
   selectedCenter = { id:centerId, name:centerName }
   selectedZone = null
   setBreadcrumb([{label:'전체 센터',fn:backToAll},{label:centerName,fn:null}])
-  showView('zones')
-  loadZones()
+  showView('zones'); loadZones()
 }
 
 async function loadZones() {
@@ -567,104 +700,60 @@ async function loadZones() {
   const { data } = await q1.gte('work_date',from).lte('work_date',to).order('zone')
   if (!data) return
 
-  // 기간 집계 (zone별 합산)
   const zoneMap = {}
   data.filter(r=>r.zone!=='P/S').forEach(r => {
     if (!zoneMap[r.zone]) zoneMap[r.zone] = { zone:r.zone, std:0, act:0, pick:0, amt:0, hd:0, hn:0, eff_sum:0, eff_cnt:0 }
     const z = zoneMap[r.zone]
-    z.std  += r.std_time_hr||0; z.act  += r.act_time_hr||0
-    z.pick += r.pick_count||0;  z.amt  += r.pick_amount||0
-    z.hd   += r.headcount_day||0; z.hn += r.headcount_night||0
-    if (r.efficiency) { z.eff_sum += r.efficiency; z.eff_cnt++ }
+    z.std+=r.std_time_hr||0; z.act+=r.act_time_hr||0
+    z.pick+=r.pick_count||0; z.amt+=r.pick_amount||0
+    z.hd+=r.headcount_day||0; z.hn+=r.headcount_night||0
+    if (r.efficiency) { z.eff_sum+=r.efficiency; z.eff_cnt++ }
   })
   const zones = Object.values(zoneMap)
-
-  // KPI
-  const totalPick = zones.reduce((s,z)=>s+z.pick,0)
-  const totalAct  = zones.reduce((s,z)=>s+z.act,0)
-  const totalAmt  = zones.reduce((s,z)=>s+z.amt,0)
-  const totalStd  = zones.reduce((s,z)=>s+z.std,0)
-  const totalEff     = totalAct>0 ? totalStd/totalAct*100 : 0
-  const prodBox      = totalAct>0 ? totalPick/totalAct : 0
-  const prodAmt      = totalAct>0 ? totalAmt/totalAct : 0
-  const totalHCDay   = zones.reduce((s,z)=>s+z.hd,0)
-  const totalHCNight = zones.reduce((s,z)=>s+z.hn,0)
-  const kpi4 = owner === '일룸'
+  const totalPick=zones.reduce((s,z)=>s+z.pick,0), totalAct=zones.reduce((s,z)=>s+z.act,0)
+  const totalAmt=zones.reduce((s,z)=>s+z.amt,0), totalStd=zones.reduce((s,z)=>s+z.std,0)
+  const totalEff=totalAct>0?totalStd/totalAct*100:0
+  const prodBox=totalAct>0?totalPick/totalAct:0, prodAmt=totalAct>0?totalAmt/totalAct:0
+  const totalHCDay=zones.reduce((s,z)=>s+z.hd,0), totalHCNight=zones.reduce((s,z)=>s+z.hn,0)
+  const kpi4 = owner==='일룸'
     ? `<div class="kpi-card c-purple"><div class="kpi-head"><span class="kpi-lbl">주간 / 야간 투입인원</span><div class="kpi-ico c-purple">👥</div></div><div class="kpi-val">${totalHCDay}<span class="kpi-unit">명</span> · ${totalHCNight}<span class="kpi-unit">명</span></div><div class="kpi-sub">주간 ${totalHCDay}명 · 야간 ${totalHCNight}명</div></div>`
     : `<div class="kpi-card c-purple"><div class="kpi-head"><span class="kpi-lbl">전체 가동률 (보조)</span><div class="kpi-ico c-purple">⚡</div></div><div class="kpi-val">${totalEff.toFixed(1)}<span class="kpi-unit">%</span></div><div class="kpi-sub">표준 ${totalStd.toFixed(1)}hr / 실적 ${totalAct.toFixed(1)}hr</div></div>`
 
   document.getElementById('kpiRow1').innerHTML = `
-    <div class="kpi-card c-orange">
-      <div class="kpi-head"><span class="kpi-lbl">공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div>
-      <div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div>
-      <div class="kpi-sub">총 ${totalPick.toLocaleString()}건 / ${totalAct.toFixed(1)}hr</div>
-    </div>
-    <div class="kpi-card c-blue">
-      <div class="kpi-head"><span class="kpi-lbl">공당 피킹금액</span><div class="kpi-ico c-blue">💰</div></div>
-      <div class="kpi-val">${Math.round(prodAmt).toLocaleString()}<span class="kpi-unit">만원/hr</span></div>
-      <div class="kpi-sub">총 ${totalAmt.toLocaleString()}만원</div>
-    </div>
-    <div class="kpi-card c-green">
-      <div class="kpi-head"><span class="kpi-lbl">총 피킹박스수</span><div class="kpi-ico c-green">📋</div></div>
-      <div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div>
-      <div class="kpi-sub">${zones.length}개 Zone 집계</div>
-    </div>
-    ${kpi4}
-  `
+    <div class="kpi-card c-orange"><div class="kpi-head"><span class="kpi-lbl">공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div><div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div><div class="kpi-sub">총 ${totalPick.toLocaleString()}건 / ${totalAct.toFixed(1)}hr</div></div>
+    <div class="kpi-card c-blue"><div class="kpi-head"><span class="kpi-lbl">공당 피킹금액</span><div class="kpi-ico c-blue">💰</div></div><div class="kpi-val">${Math.round(prodAmt).toLocaleString()}<span class="kpi-unit">만원/hr</span></div><div class="kpi-sub">총 ${totalAmt.toLocaleString()}만원</div></div>
+    <div class="kpi-card c-green"><div class="kpi-head"><span class="kpi-lbl">총 피킹박스수</span><div class="kpi-ico c-green">📋</div></div><div class="kpi-val">${totalPick.toLocaleString()}<span class="kpi-unit">건</span></div><div class="kpi-sub">${zones.length}개 Zone 집계</div></div>
+    ${kpi4}`
 
-  // 차트
-  const labels = zones.map(z=>z.zone)
-  const bphArr = zones.map(z=>z.act>0?parseFloat((z.pick/z.act).toFixed(1)):0)
-  const aphArr = zones.map(z=>z.act>0?parseFloat((z.amt/z.act).toFixed(0)):0)
-
+  const labels=zones.map(z=>z.zone)
+  const bphArr=zones.map(z=>z.act>0?parseFloat((z.pick/z.act).toFixed(1)):0)
+  const aphArr=zones.map(z=>z.act>0?parseFloat((z.amt/z.act).toFixed(0)):0)
   if (prodChart) prodChart.destroy()
-  prodChart = new Chart(document.getElementById('prodChart'),{
-    type:'bar', data:{labels, datasets:[{data:bphArr, backgroundColor:'rgba(255,107,53,0.2)', borderColor:'#ff6b35', borderWidth:1.5, borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#6b7280',font:{size:11,family:'Noto Sans KR'}},grid:{color:'#f0f2f8'}},
-              y:{ticks:{color:'#6b7280',font:{size:11}},grid:{color:'#f0f2f8'}}}}
-  })
+  prodChart = new Chart(document.getElementById('prodChart'),{type:'bar',data:{labels,datasets:[{data:bphArr,backgroundColor:'rgba(255,107,53,0.2)',borderColor:'#ff6b35',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:11,family:'Noto Sans KR'}},grid:{color:'#f0f2f8'}},y:{ticks:{color:'#6b7280',font:{size:11}},grid:{color:'#f0f2f8'}}}}})
   if (amtChart) amtChart.destroy()
-  amtChart = new Chart(document.getElementById('amtChart'),{
-    type:'bar', data:{labels, datasets:[{data:aphArr, backgroundColor:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', borderWidth:1.5, borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#6b7280',font:{size:11,family:'Noto Sans KR'}},grid:{color:'#f0f2f8'}},
-              y:{ticks:{color:'#6b7280',font:{size:11}},grid:{color:'#f0f2f8'}}}}
-  })
+  amtChart = new Chart(document.getElementById('amtChart'),{type:'bar',data:{labels,datasets:[{data:aphArr,backgroundColor:'rgba(59,130,246,0.15)',borderColor:'#3b82f6',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:11,family:'Noto Sans KR'}},grid:{color:'#f0f2f8'}},y:{ticks:{color:'#6b7280',font:{size:11}},grid:{color:'#f0f2f8'}}}}})
 
-  // 테이블
-  const effColor = v => !v?'#9ca3af':v>=90?'#22c55e':v>=70?'#3b82f6':v>=50?'#f59e0b':'#ef4444'
+  const effColor=v=>!v?'#9ca3af':v>=90?'#22c55e':v>=70?'#3b82f6':v>=50?'#f59e0b':'#ef4444'
   document.getElementById('zoneTableBody').innerHTML = zones.map(z => {
-    const bph = z.act>0?(z.pick/z.act).toFixed(1):'—'
-    const aph = z.act>0?Math.round(z.amt/z.act).toLocaleString():'—'
-    const eff = z.eff_cnt>0 ? z.eff_sum/z.eff_cnt : (z.act>0 ? z.std/z.act*100 : 0)
-    const col = effColor(eff)
+    const bph=z.act>0?(z.pick/z.act).toFixed(1):'—'
+    const aph=z.act>0?Math.round(z.amt/z.act).toLocaleString():'—'
+    const eff=z.eff_cnt>0?z.eff_sum/z.eff_cnt:(z.act>0?z.std/z.act*100:0)
+    const col=effColor(eff)
     return `<tr class="tbl-row-click" onclick="drillZone('${z.zone}')">
       <td><span class="zone-tag">${z.zone}</span></td>
       <td style="color:var(--orange);font-weight:600">${bph}</td>
       <td style="color:var(--blue);font-weight:600">${aph}</td>
-      <td>${z.pick.toLocaleString()}</td>
-      <td>${z.amt.toLocaleString()}</td>
-      <td>${z.act.toFixed(2)}</td>
-      <td><div class="eff-wrap">
-        <div class="eff-bar"><div class="eff-fill" style="width:${Math.min(eff,100)}%;background:${col}"></div></div>
-        <span class="eff-num" style="color:${col}">${eff>0?eff.toFixed(1)+'%':'—'}</span>
-      </div></td>
+      <td>${z.pick.toLocaleString()}</td><td>${z.amt.toLocaleString()}</td><td>${z.act.toFixed(2)}</td>
+      <td><div class="eff-wrap"><div class="eff-bar"><div class="eff-fill" style="width:${Math.min(eff,100)}%;background:${col}"></div></div><span class="eff-num" style="color:${col}">${eff>0?eff.toFixed(1)+'%':'—'}</span></div></td>
       <td>${z.hd}명</td><td>${z.hn}명</td>
     </tr>`
   }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:#9ca3af">데이터 없음</td></tr>'
 }
 
-// ── 레벨2: 작업자 상세 ─────────────────────────────
 function drillZone(zoneName) {
   selectedZone = zoneName
-  setBreadcrumb([
-    {label:'전체 센터', fn:backToAll},
-    {label:selectedCenter.name, fn:backToCenter},
-    {label:zoneName+' Zone', fn:null}
-  ])
-  showView('workers')
-  loadWorkers()
+  setBreadcrumb([{label:'전체 센터',fn:backToAll},{label:selectedCenter.name,fn:backToCenter},{label:zoneName+' Zone',fn:null}])
+  showView('workers'); loadWorkers()
 }
 
 async function loadWorkers() {
@@ -672,94 +761,61 @@ async function loadWorkers() {
   if (!from || !to) return
   let q2 = db.from('worker_daily').select('*')
   if (owner !== '전체') q2 = q2.eq('owner', owner)
-  const { data } = await q2.eq('zone',selectedZone)
-    .gte('work_date',from).lte('work_date',to)
-    .order('pick_count',{ascending:false})
+  const { data } = await q2.eq('zone',selectedZone).gte('work_date',from).lte('work_date',to).order('pick_count',{ascending:false})
   if (!data) return
 
-  // 작업자별 기간 집계
   const wMap = {}
   data.forEach(r => {
-    const k = r.worker_name
+    const k=r.worker_name
     if (!wMap[k]) wMap[k]={name:k,shift:r.shift,std:0,act:0,pick:0,eff_sum:0,eff_cnt:0}
     const w=wMap[k]
     w.std+=r.std_time_hr||0; w.act+=r.act_time_hr||0; w.pick+=r.pick_count||0
     if(r.efficiency){w.eff_sum+=r.efficiency;w.eff_cnt++}
   })
-  const workers = Object.values(wMap).sort((a,b)=>b.pick-a.pick)
-
-  const totalPick = workers.reduce((s,w)=>s+w.pick,0)
-  const totalAct  = workers.reduce((s,w)=>s+w.act,0)
-  const prodBox   = totalAct>0?totalPick/totalAct:0
+  const workers=Object.values(wMap).sort((a,b)=>b.pick-a.pick)
+  const totalPick=workers.reduce((s,w)=>s+w.pick,0), totalAct=workers.reduce((s,w)=>s+w.act,0)
+  const prodBox=totalAct>0?totalPick/totalAct:0
 
   document.getElementById('kpiRow2').innerHTML = `
-    <div class="kpi-card c-orange">
-      <div class="kpi-head"><span class="kpi-lbl">${selectedZone} 공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div>
-      <div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div>
-      <div class="kpi-sub">총 ${totalPick.toLocaleString()}건</div>
-    </div>
-    <div class="kpi-card c-blue">
-      <div class="kpi-head"><span class="kpi-lbl">투입 작업자</span><div class="kpi-ico c-blue">👥</div></div>
-      <div class="kpi-val">${workers.length}<span class="kpi-unit">명</span></div>
-      <div class="kpi-sub">주간 ${workers.filter(w=>w.shift==='주간').length}명 · 야간 ${workers.filter(w=>w.shift==='야간').length}명</div>
-    </div>
-    <div class="kpi-card c-green">
-      <div class="kpi-head"><span class="kpi-lbl">총 실적시간</span><div class="kpi-ico c-green">⏱️</div></div>
-      <div class="kpi-val">${totalAct.toFixed(1)}<span class="kpi-unit">hr</span></div>
-      <div class="kpi-sub">Zone: ${selectedZone}</div>
-    </div>
-    <div class="kpi-card c-purple">
-      <div class="kpi-head"><span class="kpi-lbl">1인 평균 피킹</span><div class="kpi-ico c-purple">📋</div></div>
-      <div class="kpi-val">${workers.length>0?Math.round(totalPick/workers.length).toLocaleString():'—'}<span class="kpi-unit">건</span></div>
-      <div class="kpi-sub">작업자당 평균</div>
-    </div>
-  `
+    <div class="kpi-card c-orange"><div class="kpi-head"><span class="kpi-lbl">${selectedZone} 공당 피킹박스수</span><div class="kpi-ico c-orange">📦</div></div><div class="kpi-val">${prodBox.toFixed(1)}<span class="kpi-unit">건/hr</span></div><div class="kpi-sub">총 ${totalPick.toLocaleString()}건</div></div>
+    <div class="kpi-card c-blue"><div class="kpi-head"><span class="kpi-lbl">투입 작업자</span><div class="kpi-ico c-blue">👥</div></div><div class="kpi-val">${workers.length}<span class="kpi-unit">명</span></div><div class="kpi-sub">주간 ${workers.filter(w=>w.shift==='주간').length}명 · 야간 ${workers.filter(w=>w.shift==='야간').length}명</div></div>
+    <div class="kpi-card c-green"><div class="kpi-head"><span class="kpi-lbl">총 실적시간</span><div class="kpi-ico c-green">⏱️</div></div><div class="kpi-val">${totalAct.toFixed(1)}<span class="kpi-unit">hr</span></div><div class="kpi-sub">Zone: ${selectedZone}</div></div>
+    <div class="kpi-card c-purple"><div class="kpi-head"><span class="kpi-lbl">1인 평균 피킹</span><div class="kpi-ico c-purple">📋</div></div><div class="kpi-val">${workers.length>0?Math.round(totalPick/workers.length).toLocaleString():'—'}<span class="kpi-unit">건</span></div><div class="kpi-sub">작업자당 평균</div></div>`
 
-  const effColor = v=>!v?'#9ca3af':v>=90?'#22c55e':v>=70?'#3b82f6':v>=50?'#f59e0b':'#ef4444'
+  const effColor=v=>!v?'#9ca3af':v>=90?'#22c55e':v>=70?'#3b82f6':v>=50?'#f59e0b':'#ef4444'
   document.getElementById('workerTableBody').innerHTML = workers.map(w => {
-    const bph = w.act>0?(w.pick/w.act).toFixed(1):'—'
-    const eff = w.eff_cnt>0?w.eff_sum/w.eff_cnt:(w.act>0?w.std/w.act*100:0)
-    const col = effColor(eff)
-    const shiftEl = w.shift==='주간'
-      ? `<span class="shift-day">주간</span>`
-      : `<span class="shift-night">야간</span>`
+    const bph=w.act>0?(w.pick/w.act).toFixed(1):'—'
+    const eff=w.eff_cnt>0?w.eff_sum/w.eff_cnt:(w.act>0?w.std/w.act*100:0)
+    const col=effColor(eff)
     return `<tr>
       <td>${w.name}</td>
-      <td>${shiftEl}</td>
-      <td style="color:var(--orange);font-weight:600">${bph}</td>
-      <td>—</td>
-      <td>${w.pick.toLocaleString()}</td>
-      <td>${w.act.toFixed(2)}</td>
-      <td><div class="eff-wrap">
-        <div class="eff-bar"><div class="eff-fill" style="width:${Math.min(eff,100)}%;background:${col}"></div></div>
-        <span class="eff-num" style="color:${col}">${eff>0?eff.toFixed(1)+'%':'—'}</span>
-      </div></td>
+      <td>${w.shift==='주간'?'<span class="shift-day">주간</span>':'<span class="shift-night">야간</span>'}</td>
+      <td style="color:var(--orange);font-weight:600">${bph}</td><td>—</td>
+      <td>${w.pick.toLocaleString()}</td><td>${w.act.toFixed(2)}</td>
+      <td><div class="eff-wrap"><div class="eff-bar"><div class="eff-fill" style="width:${Math.min(eff,100)}%;background:${col}"></div></div><span class="eff-num" style="color:${col}">${eff>0?eff.toFixed(1)+'%':'—'}</span></div></td>
     </tr>`
   }).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#9ca3af">데이터 없음</td></tr>'
 }
 
-// ── 브레드크럼 & 뷰 전환 ──────────────────────────
 function setBreadcrumb(items) {
-  document.getElementById('breadcrumb').innerHTML = items.map((item, i) => {
-    const isLast = i === items.length-1
-    const sep = i>0 ? '<span class="bc-sep"> › </span>' : ''
-    if (isLast) return sep + `<span class="bc-item active">${item.label}</span>`
-    return sep + `<span class="bc-item" onclick="${item.fn.name}()">${item.label}</span>`
+  document.getElementById('breadcrumb').innerHTML = items.map((item,i) => {
+    const isLast = i===items.length-1
+    const sep = i>0?'<span class="bc-sep"> › </span>':''
+    if (isLast) return sep+`<span class="bc-item active">${item.label}</span>`
+    return sep+`<span class="bc-item" onclick="${item.fn.name}()">${item.label}</span>`
   }).join('')
 }
 
 function backToAll() {
-  selectedCenter = null; selectedZone = null
-  setBreadcrumb([{label:'전체 센터', fn:null}])
-  showView('centers')
-  loadCenters()
+  selectedCenter=null; selectedZone=null
+  setBreadcrumb([{label:'전체 센터',fn:null}])
+  showView('centers'); loadCenters()
 }
 
 function backToCenter() {
-  selectedZone = null
+  selectedZone=null
   setBreadcrumb([{label:'전체 센터',fn:backToAll},{label:selectedCenter.name,fn:null}])
-  showView('zones')
-  loadZones()
+  showView('zones'); loadZones()
 }
 
 function showView(view) {
@@ -768,18 +824,311 @@ function showView(view) {
   })
 }
 
-// ── 페이지 전환 ──────────────────────────────────
 function navTo(page, el) {
-  ['picking','inbound','compare'].forEach(p => {
+  ['picking','inbound','cbm','compare'].forEach(p => {
     document.getElementById('page-'+p).style.display = p===page?'':'none'
   })
   document.querySelectorAll('.nav-child').forEach(c=>c.classList.remove('active'))
   el.classList.add('active')
-  const titles = {picking:'피킹 생산성 대시보드',inbound:'입고 생산성 대시보드',compare:'센터별 비교 분석'}
+  const titles = {picking:'피킹 생산성 대시보드',inbound:'입고 생산성 대시보드',cbm:'CBM 측정 관리',compare:'센터별 비교 분석'}
   document.getElementById('pageTitle').textContent = titles[page]
-  if (page==='picking') { backToAll() }
+  const bcLabels = {picking:'피킹 생산성',inbound:'입고 생산성',cbm:'CBM 관리',compare:'비교 분석'}
+  document.getElementById('breadcrumb').innerHTML = `<span class="bc-item active">${bcLabels[page]}</span>`
+  if (page==='picking') backToAll()
+  if (page==='cbm') cbmInit()
 }
 
+// ══════════════════════════════════════════════════════════════
+// CBM 로직
+// ══════════════════════════════════════════════════════════════
+const BRAND_COLORS = {
+  퍼시스:    { bg:'#1B3A6B', light:'#E3EDF8', text:'#1B3A6B' },
+  일룸:      { bg:'#1A6870', light:'#E0F0F2', text:'#1A6870' },
+  시디즈:    { bg:'#5B4FA3', light:'#EEE9F8', text:'#5B4FA3' },
+  데스커:    { bg:'#2D5FA3', light:'#E3EDF8', text:'#2D5FA3' },
+  알로소:    { bg:'#B86A00', light:'#FFF4E5', text:'#B86A00' },
+  슬로우베드:{ bg:'#1E7A4A', light:'#E8F5EC', text:'#1E7A4A' },
+}
+const CBM_BRANDS = ['전체','퍼시스','일룸','시디즈','데스커','알로소','슬로우베드']
+
+let cbmData = []
+let cbmBrandFilter = '전체'
+let cbmInited = false
+
+function calcCBM(w,d,h) {
+  if (!w||!d||!h) return null
+  return ((w/1000)*(d/1000)*(h/1000)).toFixed(4)
+}
+
+async function cbmInit() {
+  if (cbmInited) return
+  cbmInited = true
+
+  // Supabase cbm_master 테이블 로드
+  const { data, error } = await db.from('cbm_master')
+    .select('brand,code,dept,prod_type,stock_type,has_data,w_mm,d_mm,h_mm,kg')
+    .order('brand').order('code')
+
+  if (error || !data) {
+    document.getElementById('cbmSummaryRow').innerHTML = `<div style="color:var(--red);padding:16px">⚠ cbm_master 테이블을 찾을 수 없습니다. Supabase에 테이블을 먼저 생성해주세요.</div>`
+    return
+  }
+
+  cbmData = data
+  cbmRenderDashboard()
+  cbmRenderBrandFilter()
+  cbmRenderTable()
+}
+
+function cbmRenderDashboard() {
+  const total = cbmData.length
+  const measured = cbmData.filter(r=>r.has_data).length
+  const pct = total ? Math.round(measured/total*100) : 0
+
+  document.getElementById('cbmSummaryRow').innerHTML = `
+    <div class="cbm-summary-card">
+      <div class="cbm-summary-num">${total.toLocaleString()}</div>
+      <div class="cbm-summary-label">전체 품목 (단품코드 기준)</div>
+    </div>
+    <div class="cbm-summary-card" style="background:#E0F0F2;border-color:#A8D8D8">
+      <div class="cbm-summary-num" style="color:#1A6870">${measured.toLocaleString()}</div>
+      <div class="cbm-summary-label">측정 완료</div>
+    </div>
+    <div class="cbm-summary-card" style="background:var(--red-bg);border-color:#fca5a5">
+      <div class="cbm-summary-num" style="color:var(--red)">${(total-measured).toLocaleString()}</div>
+      <div class="cbm-summary-label">미측정</div>
+    </div>
+    <div class="cbm-summary-card" style="background:#EEF2F8;border-color:#B0BDD8">
+      <div class="cbm-summary-num" style="color:#1B3A6B">${pct}%</div>
+      <div class="cbm-summary-label">전체 측정 완료율</div>
+    </div>`
+
+  document.getElementById('cbmProgressWrap').style.display = ''
+  document.getElementById('cbmPctLabel').textContent = pct + '%'
+  document.getElementById('cbmProgressBar').style.width = pct + '%'
+
+  // 브랜드별 카드
+  const brandMap = {}
+  cbmData.forEach(r => {
+    if (!brandMap[r.brand]) brandMap[r.brand] = { total:0, measured:0 }
+    brandMap[r.brand].total++
+    if (r.has_data) brandMap[r.brand].measured++
+  })
+
+  document.getElementById('cbmBrandGrid').innerHTML = Object.entries(brandMap).map(([brand, s]) => {
+    const p = Math.round(s.measured/s.total*100)
+    const c = BRAND_COLORS[brand] || { bg:'#666', light:'#EEE', text:'#333' }
+    return `<div class="cbm-brand-card" style="border-top:4px solid ${c.bg}">
+      <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:6px">${brand}</div>
+      <div style="margin-bottom:4px">
+        <span style="color:${c.text};font-weight:700;font-size:22px">${s.measured.toLocaleString()}</span>
+        <span style="color:var(--text3);font-size:13px"> / ${s.total.toLocaleString()}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">미측정 <b style="color:var(--red)">${(s.total-s.measured).toLocaleString()}</b>개</div>
+      <div class="cbm-progress-bg" style="margin-top:8px">
+        <div class="cbm-progress-bar" style="width:${p}%;background:${c.bg}"></div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--text3);margin-top:3px">${p}%</div>
+    </div>`
+  }).join('')
+}
+
+function cbmRenderBrandFilter() {
+  document.getElementById('cbmBrandFilter').innerHTML = CBM_BRANDS.map(b => {
+    const c = BRAND_COLORS[b]
+    const isActive = b === cbmBrandFilter
+    const style = isActive && c ? `background:${c.bg};color:#fff;border-color:${c.bg}` : ''
+    return `<button class="cbm-filter-btn" style="${style}" onclick="cbmSetBrand('${b}',this)">${b}</button>`
+  }).join('')
+}
+
+function cbmSetBrand(brand, el) {
+  cbmBrandFilter = brand
+  document.querySelectorAll('.cbm-filter-btn').forEach(b => {
+    b.style = ''
+  })
+  const c = BRAND_COLORS[brand]
+  if (c) el.style.cssText = `background:${c.bg};color:#fff;border-color:${c.bg}`
+  else el.style.cssText = `background:#1B3A6B;color:#fff;border-color:#1B3A6B`
+  cbmRenderTable()
+}
+
+function cbmRenderTable() {
+  const filtered = cbmData.filter(r => cbmBrandFilter==='전체' || r.brand===cbmBrandFilter)
+  const show = filtered.slice(0, 200)
+
+  document.getElementById('cbmTableBody').innerHTML = show.map((r, i) => {
+    const c = BRAND_COLORS[r.brand] || { light:'#EEE', text:'#333' }
+    const cbm = r.has_data ? calcCBM(r.w_mm, r.d_mm, r.h_mm) : null
+    return `<tr>
+      <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.brand}</span></td>
+      <td style="font-family:monospace;font-size:12px">${r.code}</td>
+      <td>${r.dept||'-'}</td>
+      <td>${r.stock_type||'-'}</td>
+      <td style="text-align:right">${r.w_mm??'-'}</td>
+      <td style="text-align:right">${r.d_mm??'-'}</td>
+      <td style="text-align:right">${r.h_mm??'-'}</td>
+      <td style="text-align:right">${r.kg??'-'}</td>
+      <td style="text-align:right;color:#1A6870;font-weight:600">${cbm??'-'}</td>
+      <td style="text-align:center"><span class="cbm-brand-badge ${r.has_data?'cbm-measured':'cbm-unmeasured'}">${r.has_data?'완료':'미측정'}</span></td>
+    </tr>`
+  }).join('')
+
+  const more = document.getElementById('cbmTableMore')
+  if (filtered.length > 200) {
+    more.style.display = ''
+    more.textContent = `${filtered.length.toLocaleString()}개 중 200개 표시 — 엑셀 다운로드로 전체 확인`
+  } else {
+    more.style.display = 'none'
+  }
+}
+
+function cbmSearch() {
+  const code = document.getElementById('cbmSearchInput').value.trim()
+  const el = document.getElementById('cbmSearchResult')
+  if (!code) { el.innerHTML=''; return }
+
+  const found = cbmData.find(r => r.code.toLowerCase() === code.toLowerCase())
+  if (!found) {
+    el.innerHTML = '<div class="cbm-not-found">해당 코드를 찾을 수 없습니다.</div>'
+    return
+  }
+  const cbm = found.has_data ? calcCBM(found.w_mm, found.d_mm, found.h_mm) : null
+  el.innerHTML = `<div class="cbm-result-card">
+    <div class="cbm-result-row">
+      <span class="cbm-result-label">브랜드</span><span class="cbm-result-val">${found.brand}</span>
+      <span class="cbm-result-label">단품코드</span><span class="cbm-result-val" style="font-family:monospace">${found.code}</span>
+    </div>
+    <div class="cbm-result-row">
+      <span class="cbm-result-label">취합부서</span><span class="cbm-result-val">${found.dept||'-'}</span>
+      <span class="cbm-result-label">재고구분</span><span class="cbm-result-val">${found.stock_type||'-'}</span>
+    </div>
+    <div class="cbm-result-row">
+      <span class="cbm-result-label">W (mm)</span><span class="cbm-result-val">${found.w_mm??'미측정'}</span>
+      <span class="cbm-result-label">D (mm)</span><span class="cbm-result-val">${found.d_mm??'미측정'}</span>
+      <span class="cbm-result-label">H (mm)</span><span class="cbm-result-val">${found.h_mm??'미측정'}</span>
+      <span class="cbm-result-label">KG</span><span class="cbm-result-val">${found.kg??'미측정'}</span>
+    </div>
+    ${cbm?`<div class="cbm-result-row"><span class="cbm-result-label">CBM</span><span class="cbm-result-val" style="color:#1A6870;font-weight:700">${cbm} m³</span></div>`:''}
+    <div style="margin-top:8px">
+      <span class="cbm-brand-badge ${found.has_data?'cbm-measured':'cbm-unmeasured'}" style="padding:4px 14px;border-radius:12px;font-size:12px">
+        ${found.has_data?'✓ 측정 완료':'✗ 미측정'}
+      </span>
+    </div>
+  </div>`
+}
+
+function cbmDownloadDb() {
+  const filtered = cbmData.filter(r => cbmBrandFilter==='전체' || r.brand===cbmBrandFilter)
+  const rows = filtered.map(r => ({
+    브랜드:r.brand, 단품코드:r.code, 취합부서:r.dept,
+    제품구분:r.prod_type, 재고구분:r.stock_type,
+    'W(mm)':r.w_mm??'', 'D(mm)':r.d_mm??'', 'H(mm)':r.h_mm??'', 'KG':r.kg??'',
+    'CBM':r.has_data?calcCBM(r.w_mm,r.d_mm,r.h_mm):'',
+    측정여부:r.has_data?'완료':'미측정',
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'CBM목록')
+  XLSX.writeFile(wb, `CBM_목록_${new Date().toISOString().slice(0,10)}.xlsx`)
+}
+
+function cbmTab(tab, el) {
+  ['dashboard','list','upload'].forEach(t => {
+    document.getElementById('cbm-'+t).style.display = t===tab?'':'none'
+  })
+  document.querySelectorAll('.cbm-tab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active')
+}
+
+async function cbmHandleUpload(input) {
+  const file = input.files?.[0]
+  if (!file) return
+  document.getElementById('cbmDropContent').innerHTML = '<div style="color:#1B3A6B;font-weight:700">⏳ 분석 중...</div>'
+
+  try {
+    const buf = await file.arrayBuffer()
+    const wb  = XLSX.read(buf, { type:'array' })
+    const sheet = wb.Sheets[wb.SheetNames[0]]
+    const rows  = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' })
+    const wmsCodes = [...new Set(rows.slice(1).map(r=>String(r[0]||'').trim()).filter(c=>c.length>0))]
+
+    const missing = wmsCodes.filter(c => {
+      const found = cbmData.find(r => r.code===c)
+      return !found || !found.has_data
+    })
+
+    const brandCount = {}
+    const missingRows = []
+    for (const c of missing) {
+      const found = cbmData.find(r=>r.code===c)
+      const brand = found?.brand || '미등록'
+      brandCount[brand] = (brandCount[brand]||0)+1
+      missingRows.push({ brand, code:c, dept:found?.dept||'-', stock_type:found?.stock_type||'-' })
+    }
+
+    document.getElementById('cbmDropContent').innerHTML = `
+      <div style="font-size:36px;margin-bottom:8px">📂</div>
+      <div style="font-weight:700;color:#1B3A6B">클릭하여 WMS 파일 업로드</div>
+      <div style="color:var(--text3);font-size:12px;margin-top:4px">xlsx / xls / csv 지원</div>`
+
+    document.getElementById('cbmUploadResult').innerHTML = `
+      <div class="cbm-summary-row">
+        <div class="cbm-summary-card"><div class="cbm-summary-num">${wmsCodes.length.toLocaleString()}</div><div class="cbm-summary-label">업로드 총 품목 수</div></div>
+        <div class="cbm-summary-card" style="background:var(--red-bg);border-color:#fca5a5"><div class="cbm-summary-num" style="color:var(--red)">${missing.length.toLocaleString()}</div><div class="cbm-summary-label">CBM 미측정 품목</div></div>
+        <div class="cbm-summary-card" style="background:#E0F0F2;border-color:#A8D8D8"><div class="cbm-summary-num" style="color:#1A6870">${(wmsCodes.length-missing.length).toLocaleString()}</div><div class="cbm-summary-label">측정 완료 품목</div></div>
+      </div>
+      <div class="cbm-section-title">브랜드별 미측정 품목 수</div>
+      <div class="cbm-brand-grid">
+        ${Object.entries(brandCount).map(([brand,cnt]) => {
+          const c = BRAND_COLORS[brand]||{bg:'#666',light:'#EEE',text:'#333'}
+          return `<div class="cbm-brand-card" style="border-top:4px solid ${c.bg}">
+            <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:6px">${brand}</div>
+            <div><span style="color:var(--red);font-weight:700;font-size:24px">${cnt}</span><span style="color:var(--text3);font-size:12px"> 품목 미측정</span></div>
+          </div>`
+        }).join('')}
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="cbm-btn-primary" onclick="cbmDownloadMissing(${JSON.stringify(missingRows).replace(/"/g,'&quot;')})">⬇ 미측정 품목 리스트 다운로드</button>
+        <button class="cbm-btn-secondary" onclick="document.getElementById('cbmUploadResult').innerHTML=''">초기화</button>
+      </div>
+      <div class="cbm-section-title" style="margin-top:20px">미측정 품목 미리보기 (상위 50개)</div>
+      <div class="cbm-table-wrap">
+        <table class="cbm-table">
+          <thead><tr><th>브랜드</th><th>단품코드</th><th>취합부서</th><th>재고구분</th></tr></thead>
+          <tbody>
+            ${missingRows.slice(0,50).map((r,i) => {
+              const c=BRAND_COLORS[r.brand]||{light:'#EEE',text:'#333'}
+              return `<tr style="background:${i%2===0?'#fff':'#f8faff'}">
+                <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.brand}</span></td>
+                <td style="font-family:monospace;font-size:12px">${r.code}</td>
+                <td>${r.dept}</td><td>${r.stock_type}</td>
+              </tr>`
+            }).join('')}
+          </tbody>
+        </table>
+        ${missingRows.length>50?`<div class="cbm-table-more">전체 ${missingRows.length}개 — 엑셀 다운로드로 전체 확인</div>`:''}
+      </div>`
+  } catch(err) {
+    alert('파일 파싱 오류: ' + err.message)
+    document.getElementById('cbmDropContent').innerHTML = `
+      <div style="font-size:36px;margin-bottom:8px">📂</div>
+      <div style="font-weight:700;color:#1B3A6B">클릭하여 WMS 파일 업로드</div>
+      <div style="color:var(--text3);font-size:12px;margin-top:4px">xlsx / xls / csv 지원</div>`
+  }
+  input.value = ''
+}
+
+function cbmDownloadMissing(rows) {
+  const ws = XLSX.utils.json_to_sheet(rows.map(r=>({
+    브랜드:r.brand, 단품코드:r.code, 취합부서:r.dept, 재고구분:r.stock_type
+  })))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '미측정품목')
+  XLSX.writeFile(wb, `CBM_미측정_${new Date().toISOString().slice(0,10)}.xlsx`)
+}
+
+// ── 시작 ──────────────────────────────────────────────────────
 init()
 </script>
 </body>

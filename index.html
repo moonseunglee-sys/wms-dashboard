@@ -1101,9 +1101,8 @@ async function cbmHandleUpload(input) {
           const c = BRAND_COLORS[brand] || { bg:'#9ca3af', light:'#f3f4f6', text:'#6b7280' }
           return `<div class="upload-brand-card" id="ubcard-${brand}"
             style="border-top:4px solid ${c.bg};cursor:pointer;transition:all .15s"
-            onclick="cbmShowMissingByBrand('${brand}')"
-            onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'"
-            onmouseout="this.style.boxShadow=''">
+            onclick="cbmShowMissingByBrand(this.dataset.brand)"
+            data-brand="${brand}">
             <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:6px">${brand}</div>
             <div>
               <span style="font-size:22px;font-weight:900;color:var(--red)">${cnt}</span>
@@ -1145,7 +1144,8 @@ async function cbmHandleUpload(input) {
 
 // ── 브랜드 카드 클릭 → 미측정 품목 인라인 조회 ──────────────
 let _cbmSelectedBrand = null
-function cbmShowMissingByBrand(brand) {
+function cbmShowMissingByBrand(elOrBrand) {
+  const brand = typeof elOrBrand === 'string' ? elOrBrand : elOrBrand.dataset.brand
   const allMissing = window._cbmMissing || []
   const detail = document.getElementById('cbmMissingDetail')
   if (!detail) return
@@ -1183,10 +1183,10 @@ function cbmShowMissingByBrand(brand) {
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="cbm-btn-secondary" style="padding:6px 12px;font-size:12px"
-          onclick="cbmDownloadMissing(window._cbmMissing.filter(r=>r.브랜드==='${brand}'))">
+          onclick="cbmDownloadMissingBrand('${brand}')">
           ⬇ ${brand} 미측정 다운로드
         </button>
-        <button onclick="cbmShowMissingByBrand('${brand}')"
+        <button onclick="cbmCloseMissingDetail()"
           style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;padding:4px">✕</button>
       </div>
     </div>
@@ -1218,6 +1218,18 @@ function cbmShowMissingByBrand(brand) {
     <div style="font-size:36px;margin-bottom:8px">📂</div>
     <div style="font-weight:700;color:#1B3A6B">클릭하여 WMS 파일 업로드</div>
     <div style="color:var(--text3);font-size:12px;margin-top:4px">xlsx / xls / csv 지원</div>`
+}
+
+function cbmDownloadMissingBrand(brand) {
+  const rows = (window._cbmMissing || []).filter(r => r.브랜드 === brand)
+  cbmDownloadMissing(rows)
+}
+
+function cbmCloseMissingDetail() {
+  _cbmSelectedBrand = null
+  const detail = document.getElementById('cbmMissingDetail')
+  if (detail) detail.style.display = 'none'
+  document.querySelectorAll('.upload-brand-card').forEach(el => { el.style.outline = '' })
 }
 
 function cbmDownloadResult(rows) {

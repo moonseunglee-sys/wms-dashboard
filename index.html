@@ -1020,7 +1020,7 @@ async function cbmHandleUpload(input) {
     // ★ B열(index 1) 사용, "단품코드-색상코드" → 단품코드만 추출
     const wmsCodes = [...new Set(
       rows.slice(1)
-        .map(r => String(r[1] || '').trim())   // B열
+        .map(r => String(r[2] || '').trim())   // C열 (품목아이디)
         .filter(v => v.length > 0)
         .map(v => v.split('-')[0].trim())       // 색상코드 제거
         .filter(v => v.length > 0)

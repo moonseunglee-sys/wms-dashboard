@@ -1224,37 +1224,119 @@ function cbmRenderUploadBrandCards(brandCount) {
           ? '<div class="cbm-table-more">전체 ' + filtered.length + '개 — 엑셀 다운로드로 전체 확인</div>'
           : ''
 
+        // ── DOM으로 직접 생성 (innerHTML 미사용 → 열 너비 확실히 고정) ──
         detail.style.display = ''
-        detail.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
-            '<div class="cbm-section-title" style="margin:0">' +
-              '<span style="color:' + c.text + '">' + brand + '</span> 미측정 품목' +
-              '<span style="color:var(--red);font-weight:700;margin-left:6px">' + filtered.length + '개</span>' +
-            '</div>' +
-            '<div style="display:flex;gap:8px;align-items:center">' +
-              '<button id="dlBrandBtn" class="cbm-btn-secondary" style="padding:6px 12px;font-size:12px">⬇ ' + brand + ' 미측정 다운로드</button>' +
-              '<button id="closeBrandBtn" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;padding:4px">✕</button>' +
-            '</div>' +
-          '</div>' +
-          '<div class="cbm-table-wrap">' +
-            '<table class="cbm-table" style="table-layout:fixed;width:100%">' +
-              '<thead><tr><th style="width:36px">#</th><th style="width:72px">브랜드</th><th style="width:140px">단품코드</th><th style="width:110px">제품구분</th><th style="width:66px">재고구분</th><th style="width:110px">공급처</th><th style="width:80px">비고</th></tr></thead>' +
-              '<tbody>' + rowsHtml + '</tbody>' +
-            '</table>' +
-            moreHtml +
-          '</div>'
+        detail.innerHTML = ''
 
-        // 다운로드·닫기 버튼 이벤트 (innerHTML 이후 DOM에서 바인딩)
-        const captured = filtered  // 클로저 캡처
-        document.getElementById('dlBrandBtn').addEventListener('click', function() {
-          cbmDownloadMissing(captured)
-        })
-        document.getElementById('closeBrandBtn').addEventListener('click', function() {
+        // 헤더 영역
+        const headerDiv = document.createElement('div')
+        headerDiv.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px'
+
+        const titleDiv = document.createElement('div')
+        titleDiv.className = 'cbm-section-title'
+        titleDiv.style.margin = '0'
+        titleDiv.innerHTML = '<span style="color:' + c.text + '">' + brand + '</span> 미측정 품목 <span style="color:var(--red);font-weight:700;margin-left:6px">' + filtered.length + '개</span>'
+
+        const btnDiv = document.createElement('div')
+        btnDiv.style.cssText = 'display:flex;gap:8px;align-items:center'
+
+        const dlBtn = document.createElement('button')
+        dlBtn.className = 'cbm-btn-secondary'
+        dlBtn.style.cssText = 'padding:6px 12px;font-size:12px'
+        dlBtn.textContent = '⬇ ' + brand + ' 미측정 다운로드'
+        dlBtn.addEventListener('click', function() { cbmDownloadMissing(filtered) })
+
+        const closeBtn = document.createElement('button')
+        closeBtn.style.cssText = 'background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;padding:4px'
+        closeBtn.textContent = '✕'
+        closeBtn.addEventListener('click', function() {
           selectedBrand = null
           detail.style.display = 'none'
           grid.querySelectorAll('.upload-brand-card').forEach(el => { el.style.outline = '' })
         })
 
+        btnDiv.appendChild(dlBtn)
+        btnDiv.appendChild(closeBtn)
+        headerDiv.appendChild(titleDiv)
+        headerDiv.appendChild(btnDiv)
+        detail.appendChild(headerDiv)
+
+        // 테이블 래퍼
+        const wrap = document.createElement('div')
+        wrap.className = 'cbm-table-wrap'
+
+        // 테이블 DOM 생성
+        const COL_DEFS = [
+          { label:'#',    width:36,  align:'center' },
+          { label:'브랜드', width:80,  align:'left'   },
+          { label:'단품코드', width:150, align:'left'   },
+          { label:'제품구분', width:120, align:'left'   },
+          { label:'재고구분', width:70,  align:'center' },
+          { label:'공급처', width:120, align:'left'   },
+          { label:'비고',   width:90,  align:'left'   },
+        ]
+
+        const table = document.createElement('table')
+        table.className = 'cbm-table'
+        table.style.cssText = 'table-layout:fixed;width:100%;border-collapse:collapse'
+
+        // colgroup
+        const colgroup = document.createElement('colgroup')
+        COL_DEFS.forEach(function(col) {
+          const c2 = document.createElement('col')
+          c2.style.width = col.width + 'px'
+          colgroup.appendChild(c2)
+        })
+        table.appendChild(colgroup)
+
+        // thead
+        const thead = document.createElement('thead')
+        const trHead = document.createElement('tr')
+        COL_DEFS.forEach(function(col) {
+          const th = document.createElement('th')
+          th.textContent = col.label
+          th.style.cssText = 'width:' + col.width + 'px;text-align:' + col.align + ';overflow:hidden;white-space:nowrap'
+          trHead.appendChild(th)
+        })
+        thead.appendChild(trHead)
+        table.appendChild(thead)
+
+        // tbody
+        const tbody = document.createElement('tbody')
+        filtered.forEach(function(r, i) {
+          const bc = BRAND_COLORS[r.브랜드] || { light:'#f3f4f6', text:'#6b7280' }
+          const tr = document.createElement('tr')
+          tr.style.background = i % 2 === 0 ? '#fff' : '#fff8f5'
+
+          const cells = [
+            { html: String(i + 1),    align:'center', style:'color:var(--text3)' },
+            { html: '<span class="cbm-brand-badge" style="background:' + bc.light + ';color:' + bc.text + '">' + r.브랜드 + '</span>', align:'left', style:'' },
+            { html: r.단품코드,        align:'left',   style:'font-family:monospace;font-size:12px;color:var(--text)' },
+            { html: r.제품구분 || '-', align:'left',   style:'color:var(--text2)' },
+            { html: r.재고구분 || '-', align:'center', style:'color:var(--text2)' },
+            { html: r.공급처 || '-',   align:'left',   style:'color:var(--text2)' },
+            { html: r.비고,            align:'left',   style: r.비고 === 'DB 미등록' ? 'color:var(--text3)' : 'color:var(--red)' },
+          ]
+
+          cells.forEach(function(cell, ci) {
+            const td = document.createElement('td')
+            td.innerHTML = cell.html
+            td.style.cssText = cell.style + ';text-align:' + cell.align + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:7px 10px;border-bottom:1px solid var(--border)'
+            tr.appendChild(td)
+          })
+          tbody.appendChild(tr)
+        })
+        table.appendChild(tbody)
+        wrap.appendChild(table)
+
+        if (filtered.length > 300) {
+          const more = document.createElement('div')
+          more.className = 'cbm-table-more'
+          more.textContent = '전체 ' + filtered.length + '개 — 엑셀 다운로드로 전체 확인'
+          wrap.appendChild(more)
+        }
+
+        detail.appendChild(wrap)
         detail.scrollIntoView({ behavior:'smooth', block:'nearest' })
       })
 

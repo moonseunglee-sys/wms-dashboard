@@ -1093,90 +1093,34 @@ async function cbmHandleUpload(input) {
         </div>
       </div>
 
-      <!-- 브랜드별 미측정 집계 -->
+      <!-- 브랜드별 미측정 집계: 빈 컨테이너만 — 카드는 JS DOM으로 생성 -->
       ${allMissing.length > 0 ? `
-      <div class="cbm-section-title">브랜드별 미측정 품목 수</div>
-      <div class="upload-brand-grid">
-        ${Object.entries(brandCount).sort((a,b)=>b[1]-a[1]).map(([brand, cnt]) => {
-          const c = BRAND_COLORS[brand] || { bg:'#9ca3af', light:'#f3f4f6', text:'#6b7280' }
-          return `<div class="upload-brand-card" style="border-top:4px solid ${c.bg}">
-            <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:6px">${brand}</div>
-            <div>
-              <span style="font-size:22px;font-weight:900;color:var(--red)">${cnt}</span>
-              <span style="font-size:12px;color:var(--text3)">개</span>
-            </div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">미측정</div>
-          </div>`
-        }).join('')}
-      </div>` : ''}
+      <div class="cbm-section-title">브랜드별 미측정 품목 수
+        <span style="font-size:11px;color:var(--text3);font-weight:400">(카드 클릭 시 상세 조회)</span>
+      </div>
+      <div class="upload-brand-grid" id="uploadBrandGrid"></div>
+      <div id="uploadMissingDetail" style="display:none;margin-bottom:16px"></div>
+      ` : ''}
 
       <!-- 다운로드 버튼 -->
-      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         ${measured.length > 0 ? `
         <button class="cbm-btn-primary" onclick="cbmDownloadResult(window._cbmMeasured)">
           ⬇ 측정완료 + CBM 다운로드 (${measured.length}개)
         </button>` : ''}
         ${allMissing.length > 0 ? `
         <button class="cbm-btn-secondary" onclick="cbmDownloadMissing(window._cbmMissing)">
-          ⬇ 미측정 품목 리스트 다운로드 (${allMissing.length}개)
+          ⬇ 미측정 전체 다운로드 (${allMissing.length}개)
         </button>` : ''}
         <button style="padding:8px 16px;background:#f3f4f6;color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit"
           onclick="document.getElementById('cbmUploadResult').innerHTML=''">초기화</button>
       </div>
-
-      <!-- 측정 완료 미리보기 -->
-      ${measured.length > 0 ? `
-      <div class="cbm-section-title">측정 완료 품목 미리보기 (상위 50개)</div>
-      <div class="cbm-table-wrap" style="margin-bottom:16px">
-        <table class="cbm-table">
-          <thead><tr>
-            <th>브랜드</th><th>단품코드</th>
-            <th style="text-align:right">W</th><th style="text-align:right">D</th>
-            <th style="text-align:right">H</th><th style="text-align:right">KG</th>
-            <th style="text-align:right">CBM(m³)</th>
-          </tr></thead>
-          <tbody>
-            ${measured.slice(0,50).map((r,i) => {
-              const c = BRAND_COLORS[r.브랜드]||{light:'#EEE',text:'#333'}
-              return `<tr style="background:${i%2===0?'#fff':'#f8faff'}">
-                <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.브랜드}</span></td>
-                <td style="font-family:monospace;font-size:12px">${r.단품코드}</td>
-                <td style="text-align:right">${r['W(mm)']||'-'}</td>
-                <td style="text-align:right">${r['D(mm)']||'-'}</td>
-                <td style="text-align:right">${r['H(mm)']||'-'}</td>
-                <td style="text-align:right">${r['KG']||'-'}</td>
-                <td style="text-align:right;color:#1A6870;font-weight:600">${r['CBM(m³)']||'-'}</td>
-              </tr>`
-            }).join('')}
-          </tbody>
-        </table>
-        ${measured.length > 50 ? `<div class="cbm-table-more">전체 ${measured.length}개 — 엑셀 다운로드로 전체 확인</div>` : ''}
-      </div>` : ''}
-
-      <!-- 미측정 품목 미리보기 -->
-      ${allMissing.length > 0 ? `
-      <div class="cbm-section-title">미측정 품목 목록 (상위 100개)</div>
-      <div class="cbm-table-wrap">
-        <table class="cbm-table">
-          <thead><tr><th>브랜드</th><th>단품코드</th><th>비고</th></tr></thead>
-          <tbody>
-            ${allMissing.slice(0,100).map((r,i) => {
-              const c = BRAND_COLORS[r.브랜드]||{light:'#f3f4f6',text:'#6b7280'}
-              return `<tr style="background:${i%2===0?'#fff':'#fff8f5'}">
-                <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.브랜드}</span></td>
-                <td style="font-family:monospace;font-size:12px">${r.단품코드}</td>
-                <td style="color:${r.비고==='DB 미등록'?'var(--text3)':'var(--red)'}">${r.비고}</td>
-              </tr>`
-            }).join('')}
-          </tbody>
-        </table>
-        ${allMissing.length > 100 ? `<div class="cbm-table-more">전체 ${allMissing.length}개 — 엑셀 다운로드로 전체 확인</div>` : ''}
-      </div>` : ''}
     `
 
-    // 다운로드용 데이터 전역 저장
+    // 전역 저장 후 DOM으로 브랜드 카드 생성 (addEventListener 방식 — 따옴표 충돌 없음)
     window._cbmMeasured = measured
     window._cbmMissing  = allMissing
+    cbmRenderUploadBrandCards(brandCount)
 
   } catch(err) {
     alert('파일 파싱 오류: ' + err.message)
@@ -1190,6 +1134,111 @@ function resetDropZone() {
     <div style="font-size:36px;margin-bottom:8px">📂</div>
     <div style="font-weight:700;color:#1B3A6B">클릭하여 WMS 파일 업로드</div>
     <div style="color:var(--text3);font-size:12px;margin-top:4px">xlsx / xls / csv 지원</div>`
+}
+
+
+// ── 업로드 브랜드 카드 DOM 생성 + 클릭 이벤트 바인딩 ─────────
+// innerHTML 템플릿 리터럴 밖에서 처리 → 따옴표 충돌 구조적으로 없음
+function cbmRenderUploadBrandCards(brandCount) {
+  const grid = document.getElementById('uploadBrandGrid')
+  if (!grid) return
+
+  let selectedBrand = null
+
+  Object.entries(brandCount)
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([brand, cnt]) => {
+      const c = BRAND_COLORS[brand] || { bg:'#9ca3af', light:'#f3f4f6', text:'#6b7280' }
+
+      // 카드 DOM 생성
+      const card = document.createElement('div')
+      card.className = 'upload-brand-card'
+      card.style.cssText = 'border-top:4px solid ' + c.bg + ';cursor:pointer;transition:box-shadow .15s'
+      card.innerHTML =
+        '<div style="font-size:13px;font-weight:700;color:' + c.text + ';margin-bottom:6px">' + brand + '</div>' +
+        '<div><span style="font-size:22px;font-weight:900;color:var(--red)">' + cnt + '</span>' +
+        '<span style="font-size:12px;color:var(--text3)"> 개</span></div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px">클릭하여 조회 →</div>'
+
+      // hover
+      card.addEventListener('mouseenter', function() { this.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)' })
+      card.addEventListener('mouseleave', function() { this.style.boxShadow = '' })
+
+      // 클릭: 토글 방식으로 해당 브랜드 미측정 목록 표시
+      card.addEventListener('click', function() {
+        const allMissing = window._cbmMissing || []
+        const detail = document.getElementById('uploadMissingDetail')
+        if (!detail) return
+
+        // 같은 카드 다시 클릭 → 닫기
+        if (selectedBrand === brand) {
+          selectedBrand = null
+          detail.style.display = 'none'
+          grid.querySelectorAll('.upload-brand-card').forEach(el => {
+            el.style.outline = ''
+          })
+          return
+        }
+
+        // 카드 선택 표시
+        selectedBrand = brand
+        grid.querySelectorAll('.upload-brand-card').forEach(el => {
+          el.style.outline = ''
+        })
+        card.style.outline = '2.5px solid ' + c.bg
+
+        // 해당 브랜드 미측정 목록 필터
+        const filtered = allMissing.filter(function(r) { return r.브랜드 === brand })
+
+        // 테이블 rows 생성
+        const rowsHtml = filtered.map(function(r, i) {
+          return '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fff8f5') + '">' +
+            '<td style="color:var(--text3);text-align:center;width:40px">' + (i + 1) + '</td>' +
+            '<td style="font-family:monospace;font-size:12px;color:var(--text)">' + r.단품코드 + '</td>' +
+            '<td style="color:' + (r.비고 === 'DB 미등록' ? 'var(--text3)' : 'var(--red)') + '">' + r.비고 + '</td>' +
+            '</tr>'
+        }).join('')
+
+        const moreHtml = filtered.length > 300
+          ? '<div class="cbm-table-more">전체 ' + filtered.length + '개 — 엑셀 다운로드로 전체 확인</div>'
+          : ''
+
+        detail.style.display = ''
+        detail.innerHTML =
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+            '<div class="cbm-section-title" style="margin:0">' +
+              '<span style="color:' + c.text + '">' + brand + '</span> 미측정 품목' +
+              '<span style="color:var(--red);font-weight:700;margin-left:6px">' + filtered.length + '개</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:8px;align-items:center">' +
+              '<button id="dlBrandBtn" class="cbm-btn-secondary" style="padding:6px 12px;font-size:12px">⬇ ' + brand + ' 미측정 다운로드</button>' +
+              '<button id="closeBrandBtn" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;padding:4px">✕</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="cbm-table-wrap">' +
+            '<table class="cbm-table">' +
+              '<thead><tr><th style="width:40px">#</th><th>단품코드</th><th>비고</th></tr></thead>' +
+              '<tbody>' + rowsHtml + '</tbody>' +
+            '</table>' +
+            moreHtml +
+          '</div>'
+
+        // 다운로드·닫기 버튼 이벤트 (innerHTML 이후 DOM에서 바인딩)
+        const captured = filtered  // 클로저 캡처
+        document.getElementById('dlBrandBtn').addEventListener('click', function() {
+          cbmDownloadMissing(captured)
+        })
+        document.getElementById('closeBrandBtn').addEventListener('click', function() {
+          selectedBrand = null
+          detail.style.display = 'none'
+          grid.querySelectorAll('.upload-brand-card').forEach(el => { el.style.outline = '' })
+        })
+
+        detail.scrollIntoView({ behavior:'smooth', block:'nearest' })
+      })
+
+      grid.appendChild(card)
+    })
 }
 
 function cbmDownloadResult(rows) {

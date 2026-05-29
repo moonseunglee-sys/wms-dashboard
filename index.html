@@ -427,64 +427,59 @@ tr:last-child td{border-bottom:none}
 
     <!-- CBM 탭바 -->
     <div class="cbm-tab-bar">
-      <button class="cbm-tab active" onclick="cbmTab('dashboard',this)">📊 현황</button>
-      <button class="cbm-tab" onclick="cbmTab('list',this)">🔍 조회 / 리스트</button>
-      <button class="cbm-tab" onclick="cbmTab('upload',this)">📂 WMS 업로드</button>
+      <button class="cbm-tab active" onclick="cbmTab('main',this)">📊 CBM 현황 · 조회</button>
+      <button class="cbm-tab" onclick="cbmTab('upload',this)">📂 WMS 미측정 추출</button>
     </div>
 
     <div class="cbm-body">
 
-      <!-- CBM 탭1: 대시보드 -->
-      <div id="cbm-dashboard">
+      <!-- CBM 탭1: 현황+조회 합치기 -->
+      <div id="cbm-main">
         <div class="kpi-row" id="cbmSummaryRow" style="margin-bottom:16px">
           <div class="loading" style="grid-column:1/-1"><div class="spinner"></div>로딩 중...</div>
         </div>
-
-        <div class="cbm-section-title">브랜드별 측정 현황</div>
+        <div class="cbm-section-title">브랜드별 측정 현황 <span style="font-size:11px;color:var(--text3);font-weight:400">(카드 클릭 시 해당 브랜드 필터)</span></div>
         <div class="cbm-brand-grid" id="cbmBrandGrid">
           <div class="loading"><div class="spinner"></div></div>
         </div>
-      </div>
-
-      <!-- CBM 탭2: 조회/리스트 -->
-      <div id="cbm-list" style="display:none">
-        <div class="cbm-search-box">
-          <div class="cbm-section-title" style="margin-top:0">단품코드 조회</div>
+        <div class="cbm-search-box" style="margin-top:8px">
+          <div class="cbm-section-title" style="margin:0 0 10px">단품코드 조회</div>
           <div class="cbm-search-row">
             <input class="cbm-input" id="cbmSearchInput" placeholder="단품코드 입력 (예: FHC015F)" onkeydown="if(event.key==='Enter')cbmSearch()">
             <button class="cbm-btn-primary" onclick="cbmSearch()">조회</button>
           </div>
           <div id="cbmSearchResult"></div>
         </div>
-
-        <div class="cbm-section-title">전체 리스트</div>
-        <div class="cbm-filter-row">
-          <div class="cbm-filter-group" id="cbmBrandFilter"></div>
-          <button class="cbm-btn-secondary" onclick="cbmDownloadDb()">⬇ 엑셀 다운로드</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px">
+          <div class="cbm-section-title" style="margin:0">측정 완료 리스트</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="cbm-filter-group" id="cbmBrandFilter"></div>
+            <button class="cbm-btn-secondary" onclick="cbmDownloadDb()">⬇ 엑셀</button>
+          </div>
         </div>
         <div class="cbm-table-wrap">
           <table class="cbm-table">
             <thead>
               <tr>
-                <th>브랜드</th><th>단품코드</th><th>취합부서</th><th>재고구분</th>
+                <th>브랜드</th><th>단품코드</th>
                 <th style="text-align:right">W(mm)</th><th style="text-align:right">D(mm)</th>
                 <th style="text-align:right">H(mm)</th><th style="text-align:right">KG</th>
-                <th style="text-align:right">CBM</th><th style="text-align:center">측정</th>
+                <th style="text-align:right">CBM(m³)</th>
               </tr>
             </thead>
             <tbody id="cbmTableBody">
-              <tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr>
             </tbody>
           </table>
           <div id="cbmTableMore" class="cbm-table-more" style="display:none"></div>
         </div>
       </div>
 
-      <!-- CBM 탭3: WMS 업로드 -->
+      <!-- CBM 탭2: WMS 미측정 추출 -->
       <div id="cbm-upload" style="display:none">
         <div class="cbm-upload-guide">
           <b>사용법:</b> WMS에서 내보낸 재고 엑셀 파일을 업로드하면,
-          CBM 실측 데이터가 없는 품목만 추려서 브랜드별 집계와 측정 요청 리스트를 제공합니다.<br>
+          CBM DB에 측정값이 <b>없는 품목만</b> 브랜드별로 추려서 엑셀로 다운로드할 수 있습니다.<br>
           <span style="color:var(--text3);font-size:12px;margin-top:4px;display:block">
             * WMS 파일의 A열에 단품코드가 있어야 합니다 (1행 헤더 제외).
           </span>
@@ -814,7 +809,7 @@ function navTo(page, el) {
   const bcLabels = {picking:'피킹 생산성',inbound:'입고 생산성',cbm:'CBM 관리',compare:'비교 분석'}
   document.getElementById('breadcrumb').innerHTML = `<span class="bc-item active">${bcLabels[page]}</span>`
   if (page==='picking') backToAll()
-  if (page==='cbm') cbmInit()
+  if (page==='cbm') { cbmInit(); cbmTab('main', document.querySelector('.cbm-tab')) }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -843,18 +838,17 @@ async function cbmInit() {
   if (cbmInited) return
   cbmInited = true
 
-  // Supabase cbm_master 테이블 로드
-  // 1000개 limit 우회: 페이지네이션으로 전체 로드
   let allData = []
   let from = 0
   const pageSize = 1000
   while (true) {
     const { data, error } = await db.from('cbm_master')
-      .select('brand,code,dept,prod_type,stock_type,has_data,w_mm,d_mm,h_mm,kg')
+      .select('brand,code,has_data,w_mm,d_mm,h_mm,kg')
+      .eq('has_data', true)
       .order('brand').order('code')
       .range(from, from + pageSize - 1)
     if (error) {
-      document.getElementById('cbmSummaryRow').innerHTML = `<div style="color:var(--red);padding:16px">⚠ cbm_master 테이블을 찾을 수 없습니다. Supabase에 테이블을 먼저 생성해주세요.</div>`
+      document.getElementById('cbmSummaryRow').innerHTML = `<div style="color:var(--red);padding:16px">⚠ cbm_master 테이블을 찾을 수 없습니다.</div>`
       return
     }
     if (!data || data.length === 0) break
@@ -870,68 +864,61 @@ async function cbmInit() {
 
 function cbmRenderDashboard() {
   const total = cbmData.length
-  const measured = cbmData.filter(r=>r.has_data).length
-  const pct = total ? Math.round(measured/total*100) : 0
+  const brands = [...new Set(cbmData.map(r=>r.brand))].length
 
-  const unmeasured = total - measured
   document.getElementById('cbmSummaryRow').innerHTML = `
-    <div class="kpi-card c-blue">
-      <div class="kpi-head"><span class="kpi-lbl">전체 등록 품목</span><div class="kpi-ico c-blue">📦</div></div>
-      <div class="kpi-val">${total.toLocaleString()}<span class="kpi-unit">개</span></div>
-      <div class="kpi-sub">단품코드 기준</div>
-    </div>
     <div class="kpi-card c-green">
-      <div class="kpi-head"><span class="kpi-lbl">측정 완료</span><div class="kpi-ico c-green">✅</div></div>
-      <div class="kpi-val">${measured.toLocaleString()}<span class="kpi-unit">개</span></div>
+      <div class="kpi-head"><span class="kpi-lbl">측정 완료 품목</span><div class="kpi-ico c-green">📐</div></div>
+      <div class="kpi-val">${total.toLocaleString()}<span class="kpi-unit">개</span></div>
       <div class="kpi-sub">W·D·H·KG 실측 완료</div>
     </div>
-    <div class="kpi-card c-orange">
-      <div class="kpi-head"><span class="kpi-lbl">미측정</span><div class="kpi-ico c-orange">⚠️</div></div>
-      <div class="kpi-val">${unmeasured.toLocaleString()}<span class="kpi-unit">개</span></div>
-      <div class="kpi-sub">측정 필요 품목</div>
+    <div class="kpi-card c-blue">
+      <div class="kpi-head"><span class="kpi-lbl">브랜드 수</span><div class="kpi-ico c-blue">🏷️</div></div>
+      <div class="kpi-val">${brands}<span class="kpi-unit">개</span></div>
+      <div class="kpi-sub">측정 완료 브랜드</div>
     </div>`
 
-
-  // 브랜드별 카드
   const brandMap = {}
   cbmData.forEach(r => {
-    if (!brandMap[r.brand]) brandMap[r.brand] = { total:0, measured:0 }
-    brandMap[r.brand].total++
-    if (r.has_data) brandMap[r.brand].measured++
+    if (!brandMap[r.brand]) brandMap[r.brand] = 0
+    brandMap[r.brand]++
   })
 
-  document.getElementById('cbmBrandGrid').innerHTML = Object.entries(brandMap).map(([brand, s]) => {
-    const p = Math.round(s.measured/s.total*100)
-    const c = BRAND_COLORS[brand] || { bg:'#666', light:'#EEE', text:'#333' }
-    return `<div class="cbm-brand-card" style="border-top:4px solid ${c.bg}">
-      <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:6px">${brand}</div>
-      <div style="margin-bottom:4px">
-        <span style="color:${c.text};font-weight:700;font-size:22px">${s.measured.toLocaleString()}</span>
-        <span style="color:var(--text3);font-size:13px"> / ${s.total.toLocaleString()}</span>
-      </div>
-      <div style="font-size:11px;color:var(--text3)">미측정 <b style="color:var(--red)">${(s.total-s.measured).toLocaleString()}</b>개</div>
-      <div class="cbm-progress-bg" style="margin-top:8px">
-        <div class="cbm-progress-bar" style="width:${p}%;background:${c.bg}"></div>
-      </div>
-      <div style="text-align:right;font-size:11px;color:var(--text3);margin-top:3px">${p}%</div>
-    </div>`
-  }).join('')
+  document.getElementById('cbmBrandGrid').innerHTML = Object.entries(brandMap)
+    .sort((a,b) => b[1]-a[1])
+    .map(([brand, cnt]) => {
+      const c = BRAND_COLORS[brand] || { bg:'#666', light:'#EEE', text:'#333' }
+      return `<div class="cbm-brand-card" style="border-top:4px solid ${c.bg};cursor:pointer" onclick="cbmSetBrandFromCard('${brand}')">
+        <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:8px">${brand}</div>
+        <div>
+          <span style="color:${c.text};font-weight:700;font-size:24px">${cnt.toLocaleString()}</span>
+          <span style="color:var(--text3);font-size:12px">개 측정 완료</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">클릭하여 리스트 보기 →</div>
+      </div>`
+    }).join('')
+}
+
+function cbmSetBrandFromCard(brand) {
+  cbmBrandFilter = brand
+  cbmRenderBrandFilter()
+  cbmRenderTable()
+  // 리스트 쪽으로 스크롤
+  document.getElementById('cbmTableBody').scrollIntoView({ behavior:'smooth', block:'start' })
 }
 
 function cbmRenderBrandFilter() {
   document.getElementById('cbmBrandFilter').innerHTML = CBM_BRANDS.map(b => {
     const c = BRAND_COLORS[b]
     const isActive = b === cbmBrandFilter
-    const style = isActive && c ? `background:${c.bg};color:#fff;border-color:${c.bg}` : ''
+    const style = isActive ? (c ? `background:${c.bg};color:#fff;border-color:${c.bg}` : `background:#1B3A6B;color:#fff;border-color:#1B3A6B`) : ''
     return `<button class="cbm-filter-btn" style="${style}" onclick="cbmSetBrand('${b}',this)">${b}</button>`
   }).join('')
 }
 
 function cbmSetBrand(brand, el) {
   cbmBrandFilter = brand
-  document.querySelectorAll('.cbm-filter-btn').forEach(b => {
-    b.style = ''
-  })
+  document.querySelectorAll('.cbm-filter-btn').forEach(b => b.style = '')
   const c = BRAND_COLORS[brand]
   if (c) el.style.cssText = `background:${c.bg};color:#fff;border-color:${c.bg}`
   else el.style.cssText = `background:#1B3A6B;color:#fff;border-color:#1B3A6B`
@@ -940,29 +927,26 @@ function cbmSetBrand(brand, el) {
 
 function cbmRenderTable() {
   const filtered = cbmData.filter(r => cbmBrandFilter==='전체' || r.brand===cbmBrandFilter)
-  const show = filtered.slice(0, 200)
+  const show = filtered.slice(0, 300)
 
   document.getElementById('cbmTableBody').innerHTML = show.map((r, i) => {
     const c = BRAND_COLORS[r.brand] || { light:'#EEE', text:'#333' }
-    const cbm = r.has_data ? calcCBM(r.w_mm, r.d_mm, r.h_mm) : null
-    return `<tr>
+    const cbm = calcCBM(r.w_mm, r.d_mm, r.h_mm)
+    return `<tr style="background:${i%2===0?'#fff':'#f8faff'}">
       <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.brand}</span></td>
-      <td style="font-family:monospace;font-size:12px">${r.code}</td>
-      <td>${r.dept||'-'}</td>
-      <td>${r.stock_type||'-'}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--text)">${r.code}</td>
       <td style="text-align:right">${r.w_mm??'-'}</td>
       <td style="text-align:right">${r.d_mm??'-'}</td>
       <td style="text-align:right">${r.h_mm??'-'}</td>
       <td style="text-align:right">${r.kg??'-'}</td>
       <td style="text-align:right;color:#1A6870;font-weight:600">${cbm??'-'}</td>
-      <td style="text-align:center"><span class="cbm-brand-badge ${r.has_data?'cbm-measured':'cbm-unmeasured'}">${r.has_data?'완료':'미측정'}</span></td>
     </tr>`
   }).join('')
 
   const more = document.getElementById('cbmTableMore')
-  if (filtered.length > 200) {
+  if (filtered.length > 300) {
     more.style.display = ''
-    more.textContent = `${filtered.length.toLocaleString()}개 중 200개 표시 — 엑셀 다운로드로 전체 확인`
+    more.textContent = `${filtered.length.toLocaleString()}개 중 300개 표시 — 엑셀 다운로드로 전체 확인`
   } else {
     more.style.display = 'none'
   }
@@ -972,55 +956,48 @@ function cbmSearch() {
   const code = document.getElementById('cbmSearchInput').value.trim()
   const el = document.getElementById('cbmSearchResult')
   if (!code) { el.innerHTML=''; return }
-
   const found = cbmData.find(r => r.code.toLowerCase() === code.toLowerCase())
   if (!found) {
-    el.innerHTML = '<div class="cbm-not-found">해당 코드를 찾을 수 없습니다.</div>'
+    el.innerHTML = '<div class="cbm-not-found">해당 코드를 찾을 수 없습니다. 미측정 품목이거나 DB에 없는 코드입니다.</div>'
     return
   }
-  const cbm = found.has_data ? calcCBM(found.w_mm, found.d_mm, found.h_mm) : null
+  const cbm = calcCBM(found.w_mm, found.d_mm, found.h_mm)
   el.innerHTML = `<div class="cbm-result-card">
     <div class="cbm-result-row">
       <span class="cbm-result-label">브랜드</span><span class="cbm-result-val">${found.brand}</span>
       <span class="cbm-result-label">단품코드</span><span class="cbm-result-val" style="font-family:monospace">${found.code}</span>
     </div>
     <div class="cbm-result-row">
-      <span class="cbm-result-label">취합부서</span><span class="cbm-result-val">${found.dept||'-'}</span>
-      <span class="cbm-result-label">재고구분</span><span class="cbm-result-val">${found.stock_type||'-'}</span>
+      <span class="cbm-result-label">W (mm)</span><span class="cbm-result-val">${found.w_mm??'-'}</span>
+      <span class="cbm-result-label">D (mm)</span><span class="cbm-result-val">${found.d_mm??'-'}</span>
+      <span class="cbm-result-label">H (mm)</span><span class="cbm-result-val">${found.h_mm??'-'}</span>
+      <span class="cbm-result-label">KG</span><span class="cbm-result-val">${found.kg??'-'}</span>
     </div>
-    <div class="cbm-result-row">
-      <span class="cbm-result-label">W (mm)</span><span class="cbm-result-val">${found.w_mm??'미측정'}</span>
-      <span class="cbm-result-label">D (mm)</span><span class="cbm-result-val">${found.d_mm??'미측정'}</span>
-      <span class="cbm-result-label">H (mm)</span><span class="cbm-result-val">${found.h_mm??'미측정'}</span>
-      <span class="cbm-result-label">KG</span><span class="cbm-result-val">${found.kg??'미측정'}</span>
-    </div>
-    ${cbm?`<div class="cbm-result-row"><span class="cbm-result-label">CBM</span><span class="cbm-result-val" style="color:#1A6870;font-weight:700">${cbm} m³</span></div>`:''}
-    <div style="margin-top:8px">
-      <span class="cbm-brand-badge ${found.has_data?'cbm-measured':'cbm-unmeasured'}" style="padding:4px 14px;border-radius:12px;font-size:12px">
-        ${found.has_data?'✓ 측정 완료':'✗ 미측정'}
-      </span>
-    </div>
+    ${cbm?`<div class="cbm-result-row">
+      <span class="cbm-result-label">CBM</span>
+      <span class="cbm-result-val" style="color:#1A6870;font-weight:700;font-size:16px">${cbm} m³</span>
+    </div>`:''}
+    <div style="margin-top:8px"><span class="cbm-brand-badge cbm-measured" style="padding:4px 14px;border-radius:12px;font-size:12px">✓ 측정 완료</span></div>
   </div>`
 }
 
 function cbmDownloadDb() {
   const filtered = cbmData.filter(r => cbmBrandFilter==='전체' || r.brand===cbmBrandFilter)
   const rows = filtered.map(r => ({
-    브랜드:r.brand, 단품코드:r.code, 취합부서:r.dept,
-    제품구분:r.prod_type, 재고구분:r.stock_type,
+    브랜드:r.brand, 단품코드:r.code,
     'W(mm)':r.w_mm??'', 'D(mm)':r.d_mm??'', 'H(mm)':r.h_mm??'', 'KG':r.kg??'',
-    'CBM':r.has_data?calcCBM(r.w_mm,r.d_mm,r.h_mm):'',
-    측정여부:r.has_data?'완료':'미측정',
+    'CBM(m³)':calcCBM(r.w_mm,r.d_mm,r.h_mm)??'',
   }))
   const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'CBM목록')
-  XLSX.writeFile(wb, `CBM_목록_${new Date().toISOString().slice(0,10)}.xlsx`)
+  XLSX.utils.book_append_sheet(wb, ws, 'CBM측정완료')
+  XLSX.writeFile(wb, `CBM_측정완료_${new Date().toISOString().slice(0,10)}.xlsx`)
 }
 
 function cbmTab(tab, el) {
-  ['dashboard','list','upload'].forEach(t => {
-    document.getElementById('cbm-'+t).style.display = t===tab?'':'none'
+  ['main','upload'].forEach(t => {
+    const el2 = document.getElementById('cbm-'+t)
+    if (el2) el2.style.display = t===tab?'':'none'
   })
   document.querySelectorAll('.cbm-tab').forEach(t=>t.classList.remove('active'))
   el.classList.add('active')
@@ -1038,19 +1015,31 @@ async function cbmHandleUpload(input) {
     const rows  = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' })
     const wmsCodes = [...new Set(rows.slice(1).map(r=>String(r[0]||'').trim()).filter(c=>c.length>0))]
 
-    const missing = wmsCodes.filter(c => {
-      const found = cbmData.find(r => r.code===c)
-      return !found || !found.has_data
-    })
+    // DB에 측정값 있는 코드 set
+    const measuredSet = new Set(cbmData.map(r=>r.code))
 
+    // 미측정 품목 추출
+    const missing = wmsCodes.filter(c => !measuredSet.has(c))
+    const found   = wmsCodes.filter(c =>  measuredSet.has(c))
+
+    // 브랜드별 미측정 집계 (DB에 없으면 "미등록")
     const brandCount = {}
     const missingRows = []
     for (const c of missing) {
-      const found = cbmData.find(r=>r.code===c)
-      const brand = found?.brand || '미등록'
+      const brand = '미등록'
       brandCount[brand] = (brandCount[brand]||0)+1
-      missingRows.push({ brand, code:c, dept:found?.dept||'-', stock_type:found?.stock_type||'-' })
+      missingRows.push({ 단품코드:c, 브랜드:brand })
     }
+
+    // 측정 완료 품목 CBM 정보 포함
+    const foundRows = found.map(c => {
+      const r = cbmData.find(d=>d.code===c)
+      return {
+        브랜드:r.brand, 단품코드:c,
+        'W(mm)':r.w_mm??'', 'D(mm)':r.d_mm??'', 'H(mm)':r.h_mm??'', 'KG':r.kg??'',
+        'CBM(m³)':calcCBM(r.w_mm,r.d_mm,r.h_mm)??''
+      }
+    })
 
     document.getElementById('cbmDropContent').innerHTML = `
       <div style="font-size:36px;margin-bottom:8px">📂</div>
@@ -1058,42 +1047,73 @@ async function cbmHandleUpload(input) {
       <div style="color:var(--text3);font-size:12px;margin-top:4px">xlsx / xls / csv 지원</div>`
 
     document.getElementById('cbmUploadResult').innerHTML = `
-      <div class="cbm-summary-row">
-        <div class="cbm-summary-card"><div class="cbm-summary-num">${wmsCodes.length.toLocaleString()}</div><div class="cbm-summary-label">업로드 총 품목 수</div></div>
-        <div class="cbm-summary-card" style="background:var(--red-bg);border-color:#fca5a5"><div class="cbm-summary-num" style="color:var(--red)">${missing.length.toLocaleString()}</div><div class="cbm-summary-label">CBM 미측정 품목</div></div>
-        <div class="cbm-summary-card" style="background:#E0F0F2;border-color:#A8D8D8"><div class="cbm-summary-num" style="color:#1A6870">${(wmsCodes.length-missing.length).toLocaleString()}</div><div class="cbm-summary-label">측정 완료 품목</div></div>
+      <div class="kpi-row" style="margin-bottom:16px">
+        <div class="kpi-card c-blue">
+          <div class="kpi-head"><span class="kpi-lbl">업로드 품목 수</span><div class="kpi-ico c-blue">📦</div></div>
+          <div class="kpi-val">${wmsCodes.length.toLocaleString()}<span class="kpi-unit">개</span></div>
+          <div class="kpi-sub">WMS 파일 기준</div>
+        </div>
+        <div class="kpi-card c-green">
+          <div class="kpi-head"><span class="kpi-lbl">CBM 측정 완료</span><div class="kpi-ico c-green">✅</div></div>
+          <div class="kpi-val">${found.length.toLocaleString()}<span class="kpi-unit">개</span></div>
+          <div class="kpi-sub">DB에 측정값 있음</div>
+        </div>
+        <div class="kpi-card c-orange">
+          <div class="kpi-head"><span class="kpi-lbl">미측정 품목</span><div class="kpi-ico c-orange">⚠️</div></div>
+          <div class="kpi-val">${missing.length.toLocaleString()}<span class="kpi-unit">개</span></div>
+          <div class="kpi-sub">측정 필요</div>
+        </div>
       </div>
-      <div class="cbm-section-title">브랜드별 미측정 품목 수</div>
-      <div class="cbm-brand-grid">
-        ${Object.entries(brandCount).map(([brand,cnt]) => {
-          const c = BRAND_COLORS[brand]||{bg:'#666',light:'#EEE',text:'#333'}
-          return `<div class="cbm-brand-card" style="border-top:4px solid ${c.bg}">
-            <div style="font-size:13px;font-weight:700;color:${c.text};margin-bottom:6px">${brand}</div>
-            <div><span style="color:var(--red);font-weight:700;font-size:24px">${cnt}</span><span style="color:var(--text3);font-size:12px"> 품목 미측정</span></div>
-          </div>`
-        }).join('')}
+
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="cbm-btn-primary" onclick='cbmDownloadResult(${JSON.stringify(foundRows).replace(/'/g,"&#39;")})'>
+          ⬇ 측정 완료 품목 + CBM 다운로드 (${found.length}개)
+        </button>
+        ${missing.length>0?`<button class="cbm-btn-secondary" onclick='cbmDownloadMissing(${JSON.stringify(missingRows).replace(/'/g,"&#39;")})'>
+          ⬇ 미측정 품목 리스트 다운로드 (${missing.length}개)
+        </button>`:''}
+        <button style="padding:8px 16px;background:#f3f4f6;color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit" onclick="document.getElementById('cbmUploadResult').innerHTML=''">초기화</button>
       </div>
-      <div style="margin-top:16px;display:flex;gap:10px">
-        <button class="cbm-btn-primary" onclick="cbmDownloadMissing(${JSON.stringify(missingRows).replace(/"/g,'&quot;')})">⬇ 미측정 품목 리스트 다운로드</button>
-        <button class="cbm-btn-secondary" onclick="document.getElementById('cbmUploadResult').innerHTML=''">초기화</button>
-      </div>
-      <div class="cbm-section-title" style="margin-top:20px">미측정 품목 미리보기 (상위 50개)</div>
-      <div class="cbm-table-wrap">
+
+      ${found.length>0?`
+      <div class="cbm-section-title">측정 완료 품목 미리보기 (상위 50개)</div>
+      <div class="cbm-table-wrap" style="margin-bottom:16px">
         <table class="cbm-table">
-          <thead><tr><th>브랜드</th><th>단품코드</th><th>취합부서</th><th>재고구분</th></tr></thead>
+          <thead><tr><th>브랜드</th><th>단품코드</th><th style="text-align:right">W</th><th style="text-align:right">D</th><th style="text-align:right">H</th><th style="text-align:right">KG</th><th style="text-align:right">CBM(m³)</th></tr></thead>
           <tbody>
-            ${missingRows.slice(0,50).map((r,i) => {
-              const c=BRAND_COLORS[r.brand]||{light:'#EEE',text:'#333'}
+            ${foundRows.slice(0,50).map((r,i)=>{
+              const c=BRAND_COLORS[r.브랜드]||{light:'#EEE',text:'#333'}
               return `<tr style="background:${i%2===0?'#fff':'#f8faff'}">
-                <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.brand}</span></td>
-                <td style="font-family:monospace;font-size:12px">${r.code}</td>
-                <td>${r.dept}</td><td>${r.stock_type}</td>
+                <td><span class="cbm-brand-badge" style="background:${c.light};color:${c.text}">${r.브랜드}</span></td>
+                <td style="font-family:monospace;font-size:12px">${r.단품코드}</td>
+                <td style="text-align:right">${r['W(mm)']||'-'}</td>
+                <td style="text-align:right">${r['D(mm)']||'-'}</td>
+                <td style="text-align:right">${r['H(mm)']||'-'}</td>
+                <td style="text-align:right">${r['KG']||'-'}</td>
+                <td style="text-align:right;color:#1A6870;font-weight:600">${r['CBM(m³)']||'-'}</td>
               </tr>`
             }).join('')}
           </tbody>
         </table>
+        ${foundRows.length>50?`<div class="cbm-table-more">전체 ${foundRows.length}개 — 엑셀 다운로드로 전체 확인</div>`:''}
+      </div>`:''}
+
+      ${missing.length>0?`
+      <div class="cbm-section-title">미측정 품목 목록 (상위 50개)</div>
+      <div class="cbm-table-wrap">
+        <table class="cbm-table">
+          <thead><tr><th>단품코드</th><th>비고</th></tr></thead>
+          <tbody>
+            ${missingRows.slice(0,50).map((r,i)=>`
+              <tr style="background:${i%2===0?'#fff':'#fff8f5'}">
+                <td style="font-family:monospace;font-size:12px">${r.단품코드}</td>
+                <td style="color:var(--red)">측정값 없음</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
         ${missingRows.length>50?`<div class="cbm-table-more">전체 ${missingRows.length}개 — 엑셀 다운로드로 전체 확인</div>`:''}
-      </div>`
+      </div>`:''}
+    `
   } catch(err) {
     alert('파일 파싱 오류: ' + err.message)
     document.getElementById('cbmDropContent').innerHTML = `
@@ -1104,10 +1124,15 @@ async function cbmHandleUpload(input) {
   input.value = ''
 }
 
+function cbmDownloadResult(rows) {
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'CBM측정완료')
+  XLSX.writeFile(wb, `CBM_측정완료_${new Date().toISOString().slice(0,10)}.xlsx`)
+}
+
 function cbmDownloadMissing(rows) {
-  const ws = XLSX.utils.json_to_sheet(rows.map(r=>({
-    브랜드:r.brand, 단품코드:r.code, 취합부서:r.dept, 재고구분:r.stock_type
-  })))
+  const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, '미측정품목')
   XLSX.writeFile(wb, `CBM_미측정_${new Date().toISOString().slice(0,10)}.xlsx`)

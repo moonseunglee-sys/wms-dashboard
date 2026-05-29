@@ -829,7 +829,7 @@ async function cbmInit() {
   const PAGE = 1000
   while (true) {
     const { data, error } = await db.from('cbm_master')
-      .select('brand,code,has_data,w_mm,d_mm,h_mm,kg')
+      .select('brand,code,has_data,w_mm,d_mm,h_mm,kg,dept,prod_type,stock_type')
       .eq('has_data', true)
       .order('brand').order('code')
       .range(from, from + PAGE - 1)

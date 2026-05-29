@@ -464,7 +464,7 @@ tr:last-child td{border-bottom:none}
           <b>사용법:</b> WMS에서 내보낸 재고 엑셀 파일을 업로드하면,
           CBM DB에 측정값이 <b>없는 품목만</b> 브랜드별로 추려서 엑셀로 다운로드할 수 있습니다.<br>
           <span style="color:var(--text3);font-size:12px;margin-top:4px;display:block">
-            * WMS 파일의 B열(품목아이디)에 <b>단품코드-색상코드</b> 형식으로 데이터가 있어야 합니다 (1행 헤더 제외).
+            * WMS 파일의 C열(품목아이디)에 <b>단품코드-색상코드</b> 형식으로 데이터가 있어야 합니다 (1행 헤더 제외).
           </span>
         </div>
         <div class="cbm-drop-zone" onclick="document.getElementById('cbmFileInput').click()">
@@ -1001,7 +1001,7 @@ function cbmTab(tab, el) {
 
 // ── WMS 업로드 처리 (핵심 수정 부분) ──────────────────────────
 // 수정 내용:
-//   1) B열(index 1) 사용 — 품목아이디 컬럼
+//   1) C열(index 2) 사용 — 품목아이디 컬럼
 //   2) "단품코드-색상코드" → split('-')[0] 으로 단품코드만 추출
 //   3) cbmAllMap 으로 브랜드 정보 표시 (has_data=false 포함)
 //   4) 결과: 브랜드별 미측정 집계 카드 + 상세 테이블
@@ -1017,17 +1017,17 @@ async function cbmHandleUpload(input) {
     const sheet = wb.Sheets[wb.SheetNames[0]]
     const rows  = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' })
 
-    // ★ B열(index 1) 사용, "단품코드-색상코드" → 단품코드만 추출
+    // ★ C열(index 2) 사용, "단품코드-색상코드" → 단품코드만 추출
     const wmsCodes = [...new Set(
       rows.slice(1)
-        .map(r => String(r[1] || '').trim())   // B열
+        .map(r => String(r[2] || '').trim())   // C열 (품목아이디)
         .filter(v => v.length > 0)
         .map(v => v.split('-')[0].trim())       // 색상코드 제거
         .filter(v => v.length > 0)
     )]
 
     if (wmsCodes.length === 0) {
-      alert('B열에서 단품코드를 찾을 수 없습니다.\nWMS 파일 형식을 확인해 주세요.')
+      alert('C열에서 단품코드를 찾을 수 없습니다.\nWMS 파일 형식을 확인해 주세요.')
       resetDropZone()
       input.value = ''
       return

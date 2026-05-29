@@ -849,10 +849,10 @@ async function cbmInit() {
   let allFrom = 0
   while (true) {
     const { data } = await db.from('cbm_master')
-      .select('code,brand,has_data')
+      .select('code,brand,has_data,dept,prod_type,stock_type')
       .range(allFrom, allFrom + PAGE - 1)
     if (!data || data.length === 0) break
-    data.forEach(r => { cbmAllMap[r.code] = { brand: r.brand, has_data: r.has_data } })
+    data.forEach(r => { cbmAllMap[r.code] = { brand: r.brand, has_data: r.has_data, dept: r.dept||'', prod_type: r.prod_type||'', stock_type: r.stock_type||'' } })
     if (data.length < PAGE) break
     allFrom += PAGE
   }
@@ -1041,7 +1041,7 @@ async function cbmHandleUpload(input) {
     for (const code of wmsCodes) {
       const info = cbmAllMap[code]
       if (!info) {
-        notInDb.push({ 단품코드:code, 브랜드:'미등록', 비고:'DB 미등록' })
+        notInDb.push({ 단품코드:code, 브랜드:'미등록', 제품구분:'', 재고구분:'', 공급처:'', 비고:'DB 미등록' })
       } else if (info.has_data) {
         const r = cbmData.find(d => d.code === code)
         measured.push({
@@ -1051,7 +1051,7 @@ async function cbmHandleUpload(input) {
           'CBM(m³)': r ? calcCBM(r.w_mm,r.d_mm,r.h_mm)??'' : ''
         })
       } else {
-        unmeasured.push({ 단품코드:code, 브랜드:info.brand, 비고:'측정값 없음' })
+        unmeasured.push({ 단품코드:code, 브랜드:info.brand, 제품구분:info.prod_type, 재고구분:info.stock_type, 공급처:info.dept, 비고:'측정값 없음' })
       }
     }
 
@@ -1192,9 +1192,14 @@ function cbmRenderUploadBrandCards(brandCount) {
 
         // 테이블 rows 생성
         const rowsHtml = filtered.map(function(r, i) {
+          const bc = BRAND_COLORS[r.브랜드] || { light:'#f3f4f6', text:'#6b7280' }
           return '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fff8f5') + '">' +
-            '<td style="color:var(--text3);text-align:center;width:40px">' + (i + 1) + '</td>' +
+            '<td style="color:var(--text3);text-align:center;width:36px">' + (i + 1) + '</td>' +
+            '<td><span class="cbm-brand-badge" style="background:' + bc.light + ';color:' + bc.text + '">' + r.브랜드 + '</span></td>' +
             '<td style="font-family:monospace;font-size:12px;color:var(--text)">' + r.단품코드 + '</td>' +
+            '<td style="color:var(--text2)">' + (r.제품구분 || '-') + '</td>' +
+            '<td style="color:var(--text2)">' + (r.재고구분 || '-') + '</td>' +
+            '<td style="color:var(--text2)">' + (r.공급처 || '-') + '</td>' +
             '<td style="color:' + (r.비고 === 'DB 미등록' ? 'var(--text3)' : 'var(--red)') + '">' + r.비고 + '</td>' +
             '</tr>'
         }).join('')
@@ -1217,7 +1222,7 @@ function cbmRenderUploadBrandCards(brandCount) {
           '</div>' +
           '<div class="cbm-table-wrap">' +
             '<table class="cbm-table">' +
-              '<thead><tr><th style="width:40px">#</th><th>단품코드</th><th>비고</th></tr></thead>' +
+              '<thead><tr><th style="width:36px">#</th><th>브랜드</th><th>단품코드</th><th>제품구분</th><th>재고구분</th><th>공급처</th><th>비고</th></tr></thead>' +
               '<tbody>' + rowsHtml + '</tbody>' +
             '</table>' +
             moreHtml +

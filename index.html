@@ -1210,13 +1210,13 @@ function cbmRenderUploadBrandCards(brandCount) {
         const rowsHtml = filtered.map(function(r, i) {
           const bc = BRAND_COLORS[r.브랜드] || { light:'#f3f4f6', text:'#6b7280' }
           return '<tr style="background:' + (i % 2 === 0 ? '#fff' : '#fff8f5') + '">' +
-            '<td style="color:var(--text3);text-align:center">' + (i + 1) + '</td>' +
-            '<td><span class="cbm-brand-badge" style="background:' + bc.light + ';color:' + bc.text + '">' + r.브랜드 + '</span></td>' +
-            '<td style="font-family:monospace;font-size:12px;color:var(--text)">' + r.단품코드 + '</td>' +
-            '<td style="color:var(--text2)">' + (r.제품구분 || '-') + '</td>' +
-            '<td style="color:var(--text2);text-align:center">' + (r.재고구분 || '-') + '</td>' +
-            '<td style="color:var(--text2)">' + (r.공급처 || '-') + '</td>' +
-            '<td style="color:' + (r.비고 === 'DB 미등록' ? 'var(--text3)' : 'var(--red)') + '">' + r.비고 + '</td>' +
+            '<td style="color:var(--text3);text-align:center;overflow:hidden">' + (i + 1) + '</td>' +
+            '<td style="overflow:hidden"><span class="cbm-brand-badge" style="background:' + bc.light + ';color:' + bc.text + '">' + r.브랜드 + '</span></td>' +
+            '<td style="font-family:monospace;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis">' + r.단품코드 + '</td>' +
+            '<td style="color:var(--text2);overflow:hidden;text-overflow:ellipsis">' + (r.제품구분 || '-') + '</td>' +
+            '<td style="color:var(--text2);text-align:center;overflow:hidden">' + (r.재고구분 || '-') + '</td>' +
+            '<td style="color:var(--text2);overflow:hidden;text-overflow:ellipsis">' + (r.공급처 || '-') + '</td>' +
+            '<td style="color:' + (r.비고 === 'DB 미등록' ? 'var(--text3)' : 'var(--red)') + ';overflow:hidden">' + r.비고 + '</td>' +
             '</tr>'
         }).join('')
 
@@ -1237,8 +1237,8 @@ function cbmRenderUploadBrandCards(brandCount) {
             '</div>' +
           '</div>' +
           '<div class="cbm-table-wrap">' +
-            '<table class="cbm-table">' +
-              '<thead><tr><th>#</th><th>브랜드</th><th>단품코드</th><th>제품구분</th><th>재고구분</th><th>공급처</th><th>비고</th></tr></thead>' +
+            '<table class="cbm-table" style="table-layout:fixed;width:100%">' +
+              '<thead><tr><th style="width:36px">#</th><th style="width:72px">브랜드</th><th style="width:140px">단품코드</th><th style="width:110px">제품구분</th><th style="width:66px">재고구분</th><th style="width:110px">공급처</th><th style="width:80px">비고</th></tr></thead>' +
               '<tbody>' + rowsHtml + '</tbody>' +
             '</table>' +
             moreHtml +

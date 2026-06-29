@@ -1,0 +1,12 @@
+[
+  {
+    "work_date": "2026-06-03",
+    "center": "양지3센터",
+    "owner": "3PL",
+    "zone": "R",
+    "std_time_hr": 1.223428,
+    "act_time_hr": 1.185883,
+    "pick_amount": 13836100.0,
+    "pick_box": 24
+  }
+]

@@ -31,3 +31,5 @@ outputs/
 # OS
 .DS_Store
 Thumbs.db
+data/master/
+data/temp/

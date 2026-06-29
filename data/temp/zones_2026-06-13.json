@@ -1,0 +1,132 @@
+[
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "일룸",
+    "zone": "H-I",
+    "std_time_hr": 21.502506,
+    "act_time_hr": 41.045994,
+    "pick_amount": 173853110.0,
+    "pick_box": 1514
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "일룸",
+    "zone": "C-D",
+    "std_time_hr": 37.206311,
+    "act_time_hr": 62.707244,
+    "pick_amount": 128895310.0,
+    "pick_box": 2911
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "일룸",
+    "zone": "A-P",
+    "std_time_hr": 24.511872,
+    "act_time_hr": 39.472544,
+    "pick_amount": 174742550.0,
+    "pick_box": 1632
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "일룸",
+    "zone": "DPS",
+    "std_time_hr": 56.327556,
+    "act_time_hr": 53.009167,
+    "pick_amount": 20163220.0,
+    "pick_box": 1841
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "퍼시스",
+    "zone": "E-F",
+    "std_time_hr": 11.24515,
+    "act_time_hr": 14.862444,
+    "pick_amount": 97513000.0,
+    "pick_box": 2204
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "퍼시스",
+    "zone": "J-K",
+    "std_time_hr": 8.65475,
+    "act_time_hr": 11.032917,
+    "pick_amount": 66983000.0,
+    "pick_box": 935
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "퍼시스",
+    "zone": "L",
+    "std_time_hr": 6.269514,
+    "act_time_hr": 6.603847,
+    "pick_amount": 78797000.0,
+    "pick_box": 516
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "퍼시스",
+    "zone": "B",
+    "std_time_hr": 3.306356,
+    "act_time_hr": 3.446917,
+    "pick_amount": 83730000.0,
+    "pick_box": 274
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지1센터",
+    "owner": "퍼시스",
+    "zone": "L/S",
+    "std_time_hr": 2.903694,
+    "act_time_hr": 2.693333,
+    "pick_amount": 8573000.0,
+    "pick_box": 480
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지2센터",
+    "owner": "데스커",
+    "zone": "M-N",
+    "std_time_hr": 39.381819,
+    "act_time_hr": 63.935275,
+    "pick_amount": 262582300.0,
+    "pick_box": 4635
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지2센터",
+    "owner": "데스커",
+    "zone": "S",
+    "std_time_hr": 16.349417,
+    "act_time_hr": 11.509056,
+    "pick_amount": 31788120.0,
+    "pick_box": 2287
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지3센터",
+    "owner": "3PL",
+    "zone": "W",
+    "std_time_hr": 3.769281,
+    "act_time_hr": 4.063658,
+    "pick_amount": 65300935.0,
+    "pick_box": 240
+  },
+  {
+    "work_date": "2026-06-13",
+    "center": "양지3센터",
+    "owner": "3PL",
+    "zone": "R",
+    "std_time_hr": 3.418847,
+    "act_time_hr": 3.423814,
+    "pick_amount": 54421470.0,
+    "pick_box": 73
+  }
+]

@@ -2015,6 +2015,13 @@ def process(target: date, from_master: bool = False) -> dict:
             with open(zpath, "w", encoding="utf-8") as _f:
                 _json.dump(zone_rows, _f, ensure_ascii=False, indent=2)
             print(f"  [종합실적 구역별] {len(zone_rows)}구역 추출 → {zpath.name}")
+            # [진단] D_1(데스커) M-N/S 그룹순서 분석 덤프 (해제: _DIAG_D1 환경변수)
+            import os as _os
+            if _os.environ.get("_DIAG_D1"):
+                _c = {2:"B",10:"J",7:"G",8:"H",6:"F",11:"K",13:"M",
+                      22:"V",23:"W",24:"X",37:"AK",45:"AS",47:"AU"}
+                _dump_sheet_order(wb2.Worksheets("D_1"), len(sd_d1), {"M-N","S"},
+                                  str(BASE_DIR / f"data/temp/d1_run_{target}.csv"), cols=_c)
         except Exception:
             import traceback; traceback.print_exc()
 

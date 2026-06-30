@@ -10,6 +10,7 @@ import { periodToRange } from '../../lib/weekUtils'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period, WorkerAgg, DailyPoint } from '../../lib/types'
 import type { Metric } from './Overview'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props { period: Period; metric: Metric }
 
@@ -320,21 +321,23 @@ export default function WorkerDetail({ period, metric }: Props) {
     <div className="space-y-4 animate-fade-in">
 
       {/* 헤더 */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] font-bold text-[#1a1f2e] mb-1">작업자 상세</p>
-            <Breadcrumb items={breadcrumb} />
-          </div>
-          {depth > 0 && (
-            <div className="text-[11px] text-gray-400">
-              {depth === 1 && `${filter.owner} · 구역 선택`}
-              {depth === 2 && `${filter.owner} › ${filter.zone} · 작업자 선택`}
-              {depth === 3 && `${filter.owner} › ${filter.zone} › ${filter.worker}`}
+      <Card>
+        <CardContent className="px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[13px] font-bold mb-1">작업자 상세</p>
+              <Breadcrumb items={breadcrumb} />
             </div>
-          )}
-        </div>
-      </div>
+            {depth > 0 && (
+              <div className="text-[11px] text-muted-foreground">
+                {depth === 1 && `${filter.owner} · 구역 선택`}
+                {depth === 2 && `${filter.owner} › ${filter.zone} · 작업자 선택`}
+                {depth === 3 && `${filter.owner} › ${filter.zone} › ${filter.worker}`}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {loading && (
         <div className="flex items-center justify-center h-40 text-gray-400">
@@ -354,33 +357,33 @@ export default function WorkerDetail({ period, metric }: Props) {
       )}
 
       {!loading && depth === 2 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <p className="text-[13px] font-bold text-[#1a1f2e]">
+        <Card>
+          <CardHeader className="px-5 py-4 border-b border-border">
+            <CardTitle className="text-[13px] font-bold">
               {filter.owner} › {filter.zone} · 작업자별 실적 (가동률 순)
-            </p>
-          </div>
-          <div className="p-5">
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
             <WorkerTable workers={workerAggs} metric={metric} onSelect={selectWorker} />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {!loading && depth === 3 && filter.worker && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <p className="text-[13px] font-bold text-[#1a1f2e]">
+        <Card>
+          <CardHeader className="px-5 py-4 border-b border-border">
+            <CardTitle className="text-[13px] font-bold">
               {filter.worker} · 일별 실적 상세
-            </p>
-          </div>
-          <div className="p-5">
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
             <WorkerDailyDetail
               workerName={filter.worker}
               daily={dailyPoints}
               metric={metric}
             />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

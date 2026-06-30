@@ -9,6 +9,7 @@ import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props { period: Period; metric: Metric }
 
@@ -126,12 +127,12 @@ function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-50">
-        <p className="text-[13px] font-bold text-[#1a1f2e]">{title}</p>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
+    <Card>
+      <CardHeader className="px-5 py-4 border-b border-border">
+        <CardTitle className="text-[13px] font-bold">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">{children}</CardContent>
+    </Card>
   )
 }
 
@@ -202,28 +203,30 @@ export default function BrandDetail({ period, metric }: Props) {
       </div>
 
       {/* 선택 브랜드 KPI 요약 */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-3 h-3 rounded-full" style={{ background: OWNER_COLOR[selectedOwner] }} />
-          <p className="text-[13px] font-bold text-[#1a1f2e]">{selectedOwner} 요약</p>
-        </div>
-        {ownerRows.length === 0 ? (
-          <p className="text-[12px] text-gray-300 text-center py-4">선택 기간에 데이터가 없습니다</p>
-        ) : (
-          <div className="flex gap-8 justify-around">
-            <StatBadge
-              label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
-              value={isAmt ? `${fmtM(totalAmt / 1_000_000)}₩` : fmtNum(totalBox)}
-              color={OWNER_COLOR[selectedOwner]}
-            />
-            <StatBadge label="평균 가동률" value={fmtPct(eff)}
-              color={eff >= 100 ? '#10b981' : eff >= 80 ? '#f97316' : '#ef4444'} />
-            <StatBadge label="표준시간 합계" value={`${totalStd.toFixed(1)}h`} color="#64748b" />
-            <StatBadge label="실적시간 합계" value={`${totalAct.toFixed(1)}h`} color="#64748b" />
-            <StatBadge label="활동 구역수" value={String(zoneAggs.length)} color="#64748b" />
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-3 h-3 rounded-full" style={{ background: OWNER_COLOR[selectedOwner] }} />
+            <p className="text-[13px] font-bold">{selectedOwner} 요약</p>
           </div>
-        )}
-      </div>
+          {ownerRows.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground text-center py-4">선택 기간에 데이터가 없습니다</p>
+          ) : (
+            <div className="flex gap-8 justify-around">
+              <StatBadge
+                label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
+                value={isAmt ? `${fmtM(totalAmt / 1_000_000)}₩` : fmtNum(totalBox)}
+                color={OWNER_COLOR[selectedOwner]}
+              />
+              <StatBadge label="평균 가동률" value={fmtPct(eff)}
+                color={eff >= 100 ? '#10b981' : eff >= 80 ? '#f97316' : '#ef4444'} />
+              <StatBadge label="표준시간 합계" value={`${totalStd.toFixed(1)}h`} color="#64748b" />
+              <StatBadge label="실적시간 합계" value={`${totalAct.toFixed(1)}h`} color="#64748b" />
+              <StatBadge label="활동 구역수" value={String(zoneAggs.length)} color="#64748b" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 구역별 실적표 + 주간 추이 나란히 */}
       <div className="grid grid-cols-2 gap-5">

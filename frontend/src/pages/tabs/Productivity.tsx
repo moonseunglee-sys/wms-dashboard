@@ -8,6 +8,7 @@ import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props { period: Period; metric: Metric }
 
@@ -23,15 +24,15 @@ function SectionCard({ title, subtitle, children }: {
   title: string; subtitle?: string; children: React.ReactNode
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-50">
+    <Card>
+      <CardHeader className="px-5 py-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <p className="text-[13px] font-bold text-[#1a1f2e]">{title}</p>
-          {subtitle && <p className="text-[11px] text-gray-400">{subtitle}</p>}
+          <CardTitle className="text-[13px] font-bold">{title}</CardTitle>
+          {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
         </div>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
+      </CardHeader>
+      <CardContent className="p-5">{children}</CardContent>
+    </Card>
   )
 }
 
@@ -141,27 +142,33 @@ export default function Productivity({ period, metric }: Props) {
 
       {/* KPI 요약 */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mb-2">전체 가동률</p>
-          <p className="text-[28px] font-bold" style={{
-            color: overallEff >= 100 ? '#10b981' : overallEff >= 80 ? '#f97316' : '#ef4444'
-          }}>{fmtPct(overallEff)}</p>
-          <p className="text-[11px] text-gray-400 mt-1">목표 100%</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mb-2">
-            시간당 피킹 ({unit}/h)
-          </p>
-          <p className="text-[28px] font-bold text-[#FF6B35]">
-            {isAmt ? fmtM(pickPerHr) : fmtNum(Math.round(pickPerHr))}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-1">실적시간 기준</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mb-2">표준/실적 시간</p>
-          <p className="text-[28px] font-bold text-gray-700">{totalStd.toFixed(0)}h</p>
-          <p className="text-[11px] text-gray-400 mt-1">실적 {totalAct.toFixed(0)}h</p>
-        </div>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">전체 가동률</p>
+            <p className="text-[28px] font-bold" style={{
+              color: overallEff >= 100 ? '#10b981' : overallEff >= 80 ? '#f97316' : '#ef4444'
+            }}>{fmtPct(overallEff)}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">목표 100%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
+              시간당 피킹 ({unit}/h)
+            </p>
+            <p className="text-[28px] font-bold text-[#FF6B35]">
+              {isAmt ? fmtM(pickPerHr) : fmtNum(Math.round(pickPerHr))}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">실적시간 기준</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">표준/실적 시간</p>
+            <p className="text-[28px] font-bold">{totalStd.toFixed(0)}h</p>
+            <p className="text-[11px] text-muted-foreground mt-1">실적 {totalAct.toFixed(0)}h</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 브랜드별 가동률 주간 추이 */}

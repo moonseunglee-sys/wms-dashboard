@@ -2,11 +2,50 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-/* ── 커스텀 토큰 (v4 @theme — opacity modifier 지원) ── */
+/* ── shadcn/ui CSS 변수 ── */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  --radius: 0.75rem;
+}
+
+/* ── 커스텀 토큰 ── */
 @theme {
   --color-letusBlue:    #2563eb;
   --color-letusOrange:  #FF6B35;
   --color-letusSidebar: #1a2332;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
 
   --animate-fade-in:  fade-in  0.2s  ease-out both;
   --animate-slide-up: slide-up 0.28s ease-out both;
@@ -16,7 +55,6 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -28,14 +66,13 @@
 body {
   font-family: Pretendard, 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 13px;
-  color: #1a1f2e;
-  background: #f5f7fa;
+  color: hsl(var(--foreground));
+  background: #f0f3f7;
   -webkit-font-smoothing: antialiased;
 }
 
 #root { min-height: 100vh; }
 
-/* ── 스크롤바 ── */
 ::-webkit-scrollbar              { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track        { background: transparent; }
 ::-webkit-scrollbar-thumb        { background: #d9d9d9; border-radius: 3px; }

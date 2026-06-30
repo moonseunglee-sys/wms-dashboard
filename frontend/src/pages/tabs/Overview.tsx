@@ -8,6 +8,7 @@ import { periodToRange, dateToWeekStart, weekLabel, getWeekEnd } from '../../lib
 import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export type Metric = 'amount' | 'box'
 
@@ -89,27 +90,28 @@ function toMonthData(rows: ZoneDaily[], metric: Metric): MonthRow[] {
 }
 
 /* ── 서브컴포넌트 ───────────────────────────────────────────── */
-
 function StatCard({ label, value, sub, color }: {
   label: string; value: string; sub?: string; color?: string
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5">
-      <p className="text-[12px] text-gray-400 font-medium mb-3">{label}</p>
-      <p className="text-[26px] font-bold leading-none" style={{ color: color ?? '#1a1f2e' }}>{value}</p>
-      {sub && <p className="text-[11.5px] text-gray-400 mt-2">{sub}</p>}
-    </div>
+    <Card>
+      <CardContent className="p-5">
+        <p className="text-[12px] text-muted-foreground font-medium mb-3">{label}</p>
+        <p className="text-[26px] font-bold leading-none" style={{ color: color ?? 'hsl(var(--foreground))' }}>{value}</p>
+        {sub && <p className="text-[11.5px] text-muted-foreground mt-2">{sub}</p>}
+      </CardContent>
+    </Card>
   )
 }
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-50">
-        <p className="text-[13px] font-bold text-[#1a1f2e]">{title}</p>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
+    <Card>
+      <CardHeader className="px-5 py-4 border-b border-border">
+        <CardTitle className="text-[13px] font-bold">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">{children}</CardContent>
+    </Card>
   )
 }
 

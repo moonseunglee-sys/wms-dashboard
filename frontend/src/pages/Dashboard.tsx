@@ -37,74 +37,62 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#f1f5f9' }}>
+    <div className="min-h-screen flex flex-col">
 
-      {/* LL 스타일 상단 바 */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+      {/* 서브 헤더: 탭 + 컨트롤 */}
+      <div className="bg-white border-b border-gray-100 sticky top-[52px] z-10 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
 
-        {/* 상단 row: 제목 + 컨트롤 */}
-        <div className="flex items-center h-14 px-6 gap-4">
-
-          {/* 왼쪽: 페이지 타이틀 */}
-          <div className="flex items-center gap-2 min-w-0">
-            <svg className="w-4 h-4 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-            <h1 className="text-[16px] font-bold text-gray-800 whitespace-nowrap">피킹 생산성 대시보드</h1>
-            <span className="text-[11px] text-gray-400 ml-1 hidden sm:block">양지센터 · {today}</span>
-          </div>
+        <div className="flex items-center px-6 gap-4 h-11">
+          {/* 날짜 */}
+          <span className="text-[11px] text-gray-400 hidden sm:block">양지센터 · {today}</span>
 
           <div className="flex-1" />
 
-          {/* 오른쪽: 기간 + 지표 */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* 기간 선택 */}
+          <div className="flex items-center gap-1">
+            {PERIOD_OPTS.map(({ label, make }) => (
+              <button
+                key={label}
+                onClick={() => handlePeriod(label, make)}
+                className={[
+                  'px-3 py-1 rounded text-[11.5px] font-medium transition-all',
+                  periodLabel === label
+                    ? 'bg-letusOrange text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50',
+                ].join(' ')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-            {/* 기간 선택 */}
-            <div className="flex items-center gap-1">
-              {PERIOD_OPTS.map(({ label, make }) => (
-                <button
-                  key={label}
-                  onClick={() => handlePeriod(label, make)}
-                  className={[
-                    'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all',
-                    periodLabel === label
-                      ? 'bg-letusOrange text-white border-letusOrange shadow-sm'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-letusOrange hover:text-letusOrange',
-                  ].join(' ')}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* 지표 토글 */}
-            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-1">
-              {(['amount', 'box'] as Metric[]).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMetric(m)}
-                  className={[
-                    'px-3 py-1.5 rounded text-[12px] font-medium transition-all',
-                    metric === m
-                      ? 'bg-white text-letusOrange shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600',
-                  ].join(' ')}
-                >
-                  {m === 'amount' ? '💰 금액' : '📦 박스수'}
-                </button>
-              ))}
-            </div>
+          {/* 지표 토글 */}
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
+            {(['amount', 'box'] as Metric[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className={[
+                  'px-3 py-1 rounded text-[11.5px] font-medium transition-all',
+                  metric === m
+                    ? 'bg-white text-letusOrange shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600',
+                ].join(' ')}
+              >
+                {m === 'amount' ? '금액' : '박스수'}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* 탭 바 */}
-        <div className="flex gap-0 px-6 border-t border-gray-50">
+        <div className="flex px-6 border-t border-gray-50">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={[
-                'px-5 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                'px-5 py-2 text-[12.5px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                 tab === t.id
                   ? 'border-letusOrange text-letusOrange'
                   : 'border-transparent text-gray-400 hover:text-gray-600',
@@ -117,7 +105,7 @@ export default function Dashboard() {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <div className="p-6">
+      <div className="p-5 flex-1">
         {tab === 'overview'     && <Overview period={period} metric={metric} />}
         {tab === 'brand'        && <BrandDetail period={period} metric={metric} />}
         {tab === 'productivity' && <Productivity period={period} metric={metric} />}

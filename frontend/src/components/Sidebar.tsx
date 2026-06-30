@@ -1,43 +1,145 @@
-import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 
+/* ── 아이콘 ──────────────────────────────────────────── */
 const IcoSearch = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
   </svg>
 )
-const IcoBar = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M5 9.2h3V19H5zm5.6-4.2h2.8v14h-2.8zm5.6 8H19v6h-2.8z" />
-  </svg>
-)
 const IcoStar = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 )
 const IcoChevron = ({ open }: { open: boolean }) => (
   <svg
-    width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+    width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
     style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
   >
     <path d="m9 18 6-6-6-6" />
   </svg>
 )
+const IcoPicking = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+)
+const IcoIncoming = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 12H2" /><path d="M12 22V12" />
+    <path d="M7 17l5 5 5-5" />
+    <path d="M2 7l10-5 10 5" /><path d="M2 7v5" /><path d="M22 7v5" />
+  </svg>
+)
+const IcoCbm = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="3" width="20" height="14" rx="2" />
+    <line x1="8" y1="21" x2="16" y2="21" />
+    <line x1="12" y1="17" x2="12" y2="21" />
+  </svg>
+)
+const IcoTerminal = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" />
+    <line x1="12" y1="17" x2="12" y2="21" /><path d="m7 8 3 3-3 3" /><line x1="13" y1="14" x2="17" y2="14" />
+  </svg>
+)
 
-const GROUPS = [
+/* ── 메뉴 데이터 ─────────────────────────────────────── */
+interface Leaf {
+  kind: 'leaf'
+  label: string
+  to: string
+}
+interface Group {
+  kind: 'group'
+  label: string
+  Icon: () => JSX.Element
+  comingSoon?: boolean
+  to?: string          // coming-soon 아이템의 링크 (선택)
+  children: Leaf[]
+}
+interface Category {
+  label: string
+  items: Group[]
+}
+
+const MENU: Category[] = [
   {
-    label: '나의 워크스페이스',
-    items: [{ to: '/dashboard', text: '피킹 대시보드', Icon: IcoBar }],
+    label: '생산성',
+    items: [
+      {
+        kind: 'group', label: '피킹생산성', Icon: IcoPicking,
+        children: [
+          { kind: 'leaf', label: '종합현황',      to: '/picking/overview' },
+          { kind: 'leaf', label: '브랜드별',       to: '/picking/brand' },
+          { kind: 'leaf', label: '생산성',         to: '/picking/productivity' },
+          { kind: 'leaf', label: '작업자별 상세',  to: '/picking/worker' },
+        ],
+      },
+      {
+        kind: 'group', label: '입고생산성', Icon: IcoIncoming,
+        comingSoon: true, to: '/incoming', children: [],
+      },
+    ],
+  },
+  {
+    label: 'CBM관리',
+    items: [
+      {
+        kind: 'group', label: 'CBM관리', Icon: IcoCbm,
+        comingSoon: true, to: '/cbm', children: [],
+      },
+    ],
+  },
+  {
+    label: '장비관리',
+    items: [
+      {
+        kind: 'group', label: '단말기 관리', Icon: IcoTerminal,
+        comingSoon: true, to: '/equipment/terminal', children: [],
+      },
+    ],
   },
 ]
 
+/* 현재 경로가 속한 그룹 키 반환 */
+function activeGroupKey(pathname: string): string | null {
+  for (const cat of MENU) {
+    for (const item of cat.items) {
+      if (item.children.some(c => pathname.startsWith(c.to))) {
+        return `${cat.label}::${item.label}`
+      }
+    }
+  }
+  return null
+}
+
+/* ── 컴포넌트 ─────────────────────────────────────────── */
 export default function Sidebar() {
   const [search, setSearch] = useState('')
-  const [openGroups, setOpenGroups] = useState<Record<number, boolean>>({ 0: true })
+  const { pathname } = useLocation()
 
-  const toggleGroup = (i: number) =>
-    setOpenGroups(prev => ({ ...prev, [i]: !prev[i] }))
+  const initKey = activeGroupKey(pathname)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    initKey ? new Set([initKey]) : new Set(['생산성::피킹생산성'])
+  )
+
+  useEffect(() => {
+    const key = activeGroupKey(pathname)
+    if (key) setOpenGroups(prev => new Set([...prev, key]))
+  }, [pathname])
+
+  const toggle = (key: string) =>
+    setOpenGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
   return (
     <aside className="w-[220px] min-w-[220px] bg-letusSidebar min-h-screen flex flex-col shrink-0">
@@ -76,39 +178,86 @@ export default function Sidebar() {
       </div>
 
       {/* 네비게이션 */}
-      <nav className="flex-1 overflow-y-auto py-2">
-        {GROUPS.map((g, gi) => (
-          <div key={gi}>
-            <button
-              onClick={() => toggleGroup(gi)}
-              className="w-full flex items-center justify-between px-4 py-2 text-[10px] text-slate-500 font-bold tracking-widest uppercase hover:text-slate-400 transition-colors"
-            >
-              <span>{g.label}</span>
-              <IcoChevron open={openGroups[gi] ?? true} />
-            </button>
+      <nav className="flex-1 overflow-y-auto py-1.5">
+        {MENU.map(cat => {
+          const visibleItems = cat.items.filter(item => {
+            if (!search) return true
+            if (item.label.toLowerCase().includes(search.toLowerCase())) return true
+            return item.children.some(c => c.label.toLowerCase().includes(search.toLowerCase()))
+          })
+          if (visibleItems.length === 0) return null
 
-            {(openGroups[gi] ?? true) && g.items
-              .filter(item => !search || item.text.includes(search))
-              .map(({ to, text, Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    [
-                      'flex items-center gap-2.5 mx-2 px-3 py-2 text-[12.5px] rounded-md transition-all duration-150',
-                      isActive
-                        ? 'bg-letusOrange/90 text-white font-semibold'
-                        : 'text-slate-400 hover:text-white hover:bg-white/6',
-                    ].join(' ')
-                  }
-                >
-                  <Icon />
-                  <span>{text}</span>
-                </NavLink>
-              ))
-            }
-          </div>
-        ))}
+          return (
+            <div key={cat.label} className="mb-0.5">
+              {/* 카테고리 헤더 */}
+              <div className="px-4 pt-3 pb-1">
+                <p className="text-[9.5px] text-slate-600 font-bold tracking-[0.14em] uppercase select-none">
+                  {cat.label}
+                </p>
+              </div>
+
+              {visibleItems.map(item => {
+                const key = `${cat.label}::${item.label}`
+                const isOpen = openGroups.has(key)
+                const hasChildren = item.children.length > 0
+
+                return (
+                  <div key={item.label}>
+                    {/* 그룹 행 */}
+                    {item.comingSoon && item.to ? (
+                      /* 구현예정 — NavLink로 이동 가능하되 흐리게 */
+                      <NavLink
+                        to={item.to}
+                        className={({ isActive }) => [
+                          'flex items-center gap-2.5 mx-2 px-3 py-2 rounded-md text-[12.5px] transition-all',
+                          isActive ? 'bg-white/8 text-slate-300' : 'text-slate-600 hover:text-slate-400',
+                        ].join(' ')}
+                      >
+                        <span className="opacity-60 shrink-0"><item.Icon /></span>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/80 text-slate-500 font-medium shrink-0">예정</span>
+                      </NavLink>
+                    ) : (
+                      /* 일반 그룹 — 클릭 시 펼침/접힘 */
+                      <button
+                        onClick={() => toggle(key)}
+                        className="w-full flex items-center gap-2.5 mx-2 px-3 py-2 rounded-md text-[12.5px] text-slate-400 hover:text-white hover:bg-white/6 transition-all duration-150"
+                        style={{ width: 'calc(100% - 1rem)' }}
+                      >
+                        <span className="opacity-70 shrink-0"><item.Icon /></span>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {hasChildren && <IcoChevron open={isOpen} />}
+                      </button>
+                    )}
+
+                    {/* 리프 아이템 */}
+                    {hasChildren && isOpen && (
+                      <div className="mb-0.5">
+                        {item.children
+                          .filter(c => !search || c.label.toLowerCase().includes(search.toLowerCase()))
+                          .map(child => (
+                            <NavLink
+                              key={child.to}
+                              to={child.to}
+                              className={({ isActive }) => [
+                                'flex items-center gap-2.5 pl-[42px] pr-3 py-1.5 mx-2 rounded text-[12px] transition-all duration-150',
+                                isActive
+                                  ? 'text-letusOrange font-semibold bg-letusOrange/10'
+                                  : 'text-slate-500 hover:text-white hover:bg-white/5',
+                              ].join(' ')}
+                            >
+                              <span className="w-1 h-1 rounded-full bg-current opacity-50 shrink-0" />
+                              {child.label}
+                            </NavLink>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
       </nav>
 
       {/* 사용자 */}

@@ -1,9 +1,12 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 
-const PAGE_TITLE: Record<string, string> = {
-  '/dashboard': '피킹 생산성 대시보드',
-}
+const PAGE_TITLE_MAP: { prefix: string; title: string }[] = [
+  { prefix: '/picking',   title: '피킹생산성' },
+  { prefix: '/incoming',  title: '입고생산성' },
+  { prefix: '/cbm',       title: 'CBM관리' },
+  { prefix: '/equipment', title: '장비관리' },
+]
 
 const IcoMenu = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -30,7 +33,7 @@ const IcoBell = () => (
 
 export default function Layout() {
   const location = useLocation()
-  const title = PAGE_TITLE[location.pathname] ?? '피킹 생산성 대시보드'
+  const title = PAGE_TITLE_MAP.find(({ prefix }) => location.pathname.startsWith(prefix))?.title ?? '생산성 관리'
 
   return (
     <div className="flex" style={{ minHeight: '100vh' }}>

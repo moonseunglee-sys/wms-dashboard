@@ -90,41 +90,23 @@ function toMonthData(rows: ZoneDaily[], metric: Metric): MonthRow[] {
 
 /* ── 서브컴포넌트 ───────────────────────────────────────────── */
 
-function StatCard({ label, value, sub, color, icon }: {
-  label: string; value: string; sub?: string; color?: string; icon?: React.ReactNode
+function StatCard({ label, value, sub, color }: {
+  label: string; value: string; sub?: string; color?: string
 }) {
-  const c = color ?? '#6b7280'
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.07)] overflow-hidden">
-      {/* 컬러 상단 라인 */}
-      <div className="h-[3px]" style={{ backgroundColor: c }} />
-      <div className="px-5 py-4">
-        <div className="flex items-start justify-between mb-3">
-          <p className="text-[11.5px] text-gray-500 font-medium">{label}</p>
-          {icon && (
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: `${c}18` }}>
-              <span style={{ color: c }}>{icon}</span>
-            </div>
-          )}
-        </div>
-        <p className="text-[26px] font-bold text-gray-800 leading-none">{value}</p>
-        {sub && (
-          <p className="text-[11px] mt-1.5 font-medium" style={{ color: c }}>
-            {sub}
-          </p>
-        )}
-      </div>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5">
+      <p className="text-[12px] text-gray-400 font-medium mb-3">{label}</p>
+      <p className="text-[26px] font-bold leading-none" style={{ color: color ?? '#1a1f2e' }}>{value}</p>
+      {sub && <p className="text-[11.5px] text-gray-400 mt-2">{sub}</p>}
     </div>
   )
 }
 
-function SectionCard({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.07)]">
-      <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
-        <p className="text-[13px] font-bold text-gray-800">{title}</p>
-        {sub && <p className="text-[11px] text-gray-400 ml-1">{sub}</p>}
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+      <div className="px-5 py-4 border-b border-gray-50">
+        <p className="text-[13px] font-bold text-[#1a1f2e]">{title}</p>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -233,30 +215,26 @@ export default function Overview({ period, metric }: Props) {
         <StatCard
           label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
           value={isAmt ? `${fmtM(kpi.primary)}₩` : fmtNum(kpi.primary)}
-          sub={isAmt ? `${fmtNum(Math.round(kpi.primary * 100))}만원` : `${fmtM(kpi.primary / 1)}박스`}
+          sub={isAmt ? `${fmtNum(Math.round(kpi.primary * 100))}만원` : undefined}
           color="#FF6B35"
-          icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>}
         />
         <StatCard
           label="평균 가동률"
           value={fmtPct(kpi.eff)}
-          sub={kpi.eff >= 100 ? '✓ 목표 달성' : `목표 100% (${(kpi.eff - 100).toFixed(1)}%p)`}
+          sub={kpi.eff >= 100 ? '목표 달성' : `목표까지 ${(100 - kpi.eff).toFixed(1)}%p`}
           color={kpi.eff >= 100 ? '#10b981' : kpi.eff >= 80 ? '#f97316' : '#ef4444'}
-          icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>}
         />
         <StatCard
           label="피킹박스수"
           value={fmtNum(kpi.box)}
           sub={`${unit} 기준`}
           color="#6366f1"
-          icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.87.18-1.3C18 2.57 15.43 0 12.3 0c-1.68 0-3.19.8-4.18 2.05L12 6H20zm-7.4 0l-3.24-3.68C9.07 2.12 9 1.83 9 1.5 9 .67 9.67 0 10.5 0S12 .67 12 1.5V6h.6zM4 6c.07-.44.18-.87.18-1.3C4.18 2.57 1.61 0-1.52 0H-2l-2 6H4z"/><path d="M2 8v13h20V8H2zm9 11H7v-2h4v2zm0-4H7v-2h4v2zm6 4h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg>}
         />
         <StatCard
           label="활동 구역수"
           value={String(kpi.zones)}
-          sub="개 구역 활동"
+          sub="개 구역"
           color="#0ea5e9"
-          icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>}
         />
       </div>
 

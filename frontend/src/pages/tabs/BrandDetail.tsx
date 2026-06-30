@@ -1,0 +1,277 @@
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
+  ResponsiveContainer, CartesianGrid,
+} from 'recharts'
+import { useState } from 'react'
+import { useAllZoneData } from '../../hooks/useAllZoneData'
+import { periodToRange, dateToWeekStart, weekLabel } from '../../lib/weekUtils'
+import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
+import type { ZoneDaily } from '../../lib/supabase'
+import type { Period } from '../../lib/types'
+import type { Metric } from './Overview'
+
+interface Props { period: Period; metric: Metric }
+
+const fmtM   = (v: number) => `${v.toFixed(1)}M`
+const fmtNum = (v: number) => v.toLocaleString('ko-KR')
+const fmtPct = (v: number) => `${v.toFixed(1)}%`
+
+function metricVal(r: ZoneDaily, metric: Metric) {
+  return metric === 'amount' ? (r.pick_amount ?? 0) : (r.pick_box ?? 0)
+}
+function metricScale(metric: Metric) { return metric === 'amount' ? 1_000_000 : 1 }
+function metricUnit(metric: Metric)  { return metric === 'amount' ? 'M₩' : '박스' }
+
+/* ── Zone별 집계 ── */
+interface ZoneRow {
+  zone: string
+  std: number; act: number
+  box: number; amount: number
+  eff: number
+  days: number
+}
+
+function aggregateZones(rows: ZoneDaily[]): ZoneRow[] {
+  const map = new Map<string, ZoneRow>()
+  const dayCnt = new Map<string, Set<string>>()
+  for (const r of rows) {
+    if (!map.has(r.zone)) map.set(r.zone, { zone: r.zone, std: 0, act: 0, box: 0, amount: 0, eff: 0, days: 0 })
+    if (!dayCnt.has(r.zone)) dayCnt.set(r.zone, new Set())
+    const e = map.get(r.zone)!
+    e.std    += r.std_time_hr
+    e.act    += r.act_time_hr
+    e.box    += r.pick_box    ?? 0
+    e.amount += r.pick_amount ?? 0
+    dayCnt.get(r.zone)!.add(r.work_date)
+  }
+  return [...map.values()].map(e => ({
+    ...e,
+    eff:  e.std > 0 ? (e.act / e.std) * 100 : 0,
+    days: dayCnt.get(e.zone)!.size,
+  })).sort((a, b) => b.eff - a.eff)
+}
+
+/* ── 주간 추이 (구역별 누적) ── */
+function weeklyTrend(rows: ZoneDaily[], metric: Metric) {
+  const scale = metricScale(metric)
+  const zonesSet = new Set(rows.map(r => r.zone))
+  const zones = [...zonesSet].sort()
+  const map = new Map<string, Record<string, number>>()
+  for (const r of rows) {
+    const ws = dateToWeekStart(r.work_date)
+    if (!map.has(ws)) map.set(ws, {})
+    const e = map.get(ws)!
+    e[r.zone]  = (e[r.zone]  ?? 0) + metricVal(r, metric) / scale
+    e['_total'] = (e['_total'] ?? 0) + metricVal(r, metric) / scale
+  }
+  const data = [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([ws, e]) => ({
+      weekLabel: weekLabel(ws),
+      ...Object.fromEntries(zones.map(z => [z, +(e[z] ?? 0).toFixed(2)])),
+      total: +(e['_total'] ?? 0).toFixed(2),
+    }))
+  return { data, zones }
+}
+
+/* ── 색상 팔레트 (구역용) ── */
+const ZONE_COLORS = [
+  '#3B82F6','#8B5CF6','#10B981','#F97316',
+  '#EC4899','#06B6D4','#84CC16','#F59E0B',
+  '#6366F1','#14B8A6',
+]
+
+function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
+  const isAmt = metric === 'amount'
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="border-b border-gray-100">
+            <th className="text-left py-2 px-3 text-gray-400 font-medium">구역</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">가동률</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M₩)' : '박스수'}</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">표준시간</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">실적시간</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">가동일수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {zones.map((z, i) => (
+            <tr key={z.zone} className={i % 2 === 0 ? 'bg-gray-50/50' : ''}>
+              <td className="py-2 px-3 font-medium text-gray-700">{z.zone}</td>
+              <td className="py-2 px-3 text-right">
+                <span className={[
+                  'inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold',
+                  z.eff >= 100 ? 'bg-emerald-50 text-emerald-600'
+                    : z.eff >= 80 ? 'bg-orange-50 text-orange-500'
+                    : 'bg-red-50 text-red-500',
+                ].join(' ')}>
+                  {fmtPct(z.eff)}
+                </span>
+              </td>
+              <td className="py-2 px-3 text-right text-gray-700">
+                {isAmt ? fmtM(z.amount / 1_000_000) : fmtNum(z.box)}
+              </td>
+              <td className="py-2 px-3 text-right text-gray-500">{z.std.toFixed(1)}h</td>
+              <td className="py-2 px-3 text-right text-gray-500">{z.act.toFixed(1)}h</td>
+              <td className="py-2 px-3 text-right text-gray-500">{z.days}일</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+      <div className="px-5 py-4 border-b border-gray-50">
+        <p className="text-[13px] font-bold text-[#1a1f2e]">{title}</p>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
+}
+
+function StatBadge({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">{label}</span>
+      <span className="text-[18px] font-bold" style={{ color }}>{value}</span>
+    </div>
+  )
+}
+
+/* ── 메인 컴포넌트 ── */
+export default function BrandDetail({ period, metric }: Props) {
+  const { rows, loading } = useAllZoneData()
+  const [selectedOwner, setSelectedOwner] = useState<string>(OWNERS[0])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-400">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-letusOrange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-[12px]">데이터 로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const { start, end } = periodToRange(period)
+  const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
+  const ownerRows = pRows.filter(r => r.owner === selectedOwner)
+
+  /* 선택 브랜드 KPI */
+  let totalStd = 0, totalAct = 0, totalBox = 0, totalAmt = 0
+  for (const r of ownerRows) {
+    totalStd += r.std_time_hr
+    totalAct += r.act_time_hr
+    totalBox += r.pick_box ?? 0
+    totalAmt += r.pick_amount ?? 0
+  }
+  const eff = totalStd > 0 ? (totalAct / totalStd) * 100 : 0
+  const unit = metricUnit(metric)
+  const isAmt = metric === 'amount'
+
+  const zoneAggs  = aggregateZones(ownerRows)
+  const { data: trendData, zones } = weeklyTrend(ownerRows, metric)
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+
+      {/* 브랜드 선택 탭 */}
+      <div className="flex items-center gap-2">
+        {OWNERS.map(o => (
+          <button
+            key={o}
+            onClick={() => setSelectedOwner(o)}
+            className={[
+              'px-4 py-2 rounded-lg text-[13px] font-semibold transition-all border',
+              selectedOwner === o
+                ? 'text-white border-transparent shadow-sm'
+                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
+            ].join(' ')}
+            style={selectedOwner === o ? { background: OWNER_COLOR[o], borderColor: OWNER_COLOR[o] } : {}}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+
+      {/* 선택 브랜드 KPI 요약 */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-3 h-3 rounded-full" style={{ background: OWNER_COLOR[selectedOwner] }} />
+          <p className="text-[13px] font-bold text-[#1a1f2e]">{selectedOwner} 요약</p>
+        </div>
+        {ownerRows.length === 0 ? (
+          <p className="text-[12px] text-gray-300 text-center py-4">선택 기간에 데이터가 없습니다</p>
+        ) : (
+          <div className="flex gap-8 justify-around">
+            <StatBadge
+              label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
+              value={isAmt ? `${fmtM(totalAmt / 1_000_000)}₩` : fmtNum(totalBox)}
+              color={OWNER_COLOR[selectedOwner]}
+            />
+            <StatBadge label="평균 가동률" value={fmtPct(eff)}
+              color={eff >= 100 ? '#10b981' : eff >= 80 ? '#f97316' : '#ef4444'} />
+            <StatBadge label="표준시간 합계" value={`${totalStd.toFixed(1)}h`} color="#64748b" />
+            <StatBadge label="실적시간 합계" value={`${totalAct.toFixed(1)}h`} color="#64748b" />
+            <StatBadge label="활동 구역수" value={String(zoneAggs.length)} color="#64748b" />
+          </div>
+        )}
+      </div>
+
+      {/* 구역별 실적표 + 주간 추이 나란히 */}
+      <div className="grid grid-cols-2 gap-5">
+
+        {/* 구역별 실적표 */}
+        <SectionCard title={`${selectedOwner} · 구역별 실적 (가동률 순)`}>
+          {zoneAggs.length === 0 ? (
+            <p className="text-[12px] text-gray-300 text-center py-8">데이터 없음</p>
+          ) : (
+            <ZoneTable zones={zoneAggs} metric={metric} />
+          )}
+        </SectionCard>
+
+        {/* 주간 구역별 추이 */}
+        <SectionCard title={`${selectedOwner} · 주간 구역별 추이 (${unit})`}>
+          {trendData.length === 0 ? (
+            <p className="text-[12px] text-gray-300 text-center py-8">데이터 없음</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={trendData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="weekLabel" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
+                />
+                <Tooltip
+                  formatter={(v: number, name: string) =>
+                    name === 'total'
+                      ? [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, '합계']
+                      : [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, name]
+                  }
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                  formatter={(v: string) => v === 'total' ? '합계' : v} />
+                {zones.map((z, i) => (
+                  <Bar key={z} dataKey={z} stackId="a"
+                    fill={ZONE_COLORS[i % ZONE_COLORS.length]}
+                    radius={i === zones.length - 1 ? [3,3,0,0] : [0,0,0,0]} />
+                ))}
+                <Line dataKey="total" stroke={OWNER_COLOR[selectedOwner]} strokeWidth={2}
+                  dot={{ r: 3, fill: OWNER_COLOR[selectedOwner] }} activeDot={{ r: 5 }} type="monotone" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </SectionCard>
+      </div>
+    </div>
+  )
+}

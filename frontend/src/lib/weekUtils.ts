@@ -1,0 +1,79 @@
+import type { Period } from './types'
+
+const fmt = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** 날짜 기준으로 속한 주(금~목)의 시작일(금요일) 반환 */
+export function getWeekStart(date: Date): Date {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  const daysSinceFri = (d.getDay() - 5 + 7) % 7  // 0=금, 1=토 ... 6=목
+  d.setDate(d.getDate() - daysSinceFri)
+  return d
+}
+
+/** 주 시작일(금)에서 종료일(목) 반환 */
+export function getWeekEnd(weekStart: Date): Date {
+  const d = new Date(weekStart)
+  d.setDate(d.getDate() + 6)
+  return d
+}
+
+/** 기간 → { start, end } 날짜 문자열 */
+export function periodToRange(period: Period): { start: string; end: string } {
+  if (period.type === 'all')     return { start: '2000-01-01', end: '2099-12-31' }
+  if (period.type === 'weekly') {
+    const s = new Date(period.weekStart)
+    return { start: period.weekStart, end: fmt(getWeekEnd(s)) }
+  }
+  if (period.type === 'monthly') {
+    const last = new Date(period.year, period.month, 0)
+    return {
+      start: `${period.year}-${String(period.month).padStart(2, '0')}-01`,
+      end:   fmt(last),
+    }
+  }
+  return { start: period.start, end: period.end }
+}
+
+/** 두 날짜 범위 내 주 목록(금요일 기준) 반환 */
+export function getWeeksInRange(start: string, end: string): string[] {
+  const weeks: string[] = []
+  let cur = getWeekStart(new Date(start))
+  const endD = new Date(end)
+  while (cur <= endD) {
+    weeks.push(fmt(cur))
+    cur = new Date(cur)
+    cur.setDate(cur.getDate() + 7)
+  }
+  return weeks
+}
+
+/** 주 시작일 → 표시 라벨 '6/20~6/26' */
+export function weekLabel(weekStart: string): string {
+  const s = new Date(weekStart)
+  const e = getWeekEnd(s)
+  const mm1 = s.getMonth() + 1, dd1 = s.getDate()
+  const mm2 = e.getMonth() + 1, dd2 = e.getDate()
+  return mm1 === mm2 ? `${mm1}/${dd1}~${dd2}` : `${mm1}/${dd1}~${mm2}/${dd2}`
+}
+
+/** 이번 주 Period */
+export function thisWeek(): Period {
+  return { type: 'weekly', weekStart: fmt(getWeekStart(new Date())) }
+}
+
+/** 이번 달 Period */
+export function thisMonth(): Period {
+  const now = new Date()
+  return { type: 'monthly', year: now.getFullYear(), month: now.getMonth() + 1 }
+}
+
+/** 날짜 문자열 → 속한 주 시작일 */
+export function dateToWeekStart(dateStr: string): string {
+  return fmt(getWeekStart(new Date(dateStr)))
+}

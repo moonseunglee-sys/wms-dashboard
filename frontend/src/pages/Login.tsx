@@ -30,7 +30,7 @@ export default function Login() {
 
         {/* 브랜드 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-letusBlue mb-4 text-2xl shadow-lg">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-letusOrange mb-4 text-2xl shadow-lg">
             📦
           </div>
           <h1 className="text-[15px] font-extrabold tracking-[0.15em] text-letusOrange">
@@ -60,7 +60,7 @@ export default function Login() {
                 className="
                   w-full bg-letusSidebar border border-white/10 rounded-lg
                   px-4 py-2.5 text-[13px] text-white placeholder-slate-600
-                  outline-none focus:border-letusBlue transition-colors
+                  outline-none focus:border-letusOrange transition-colors
                 "
               />
             </div>
@@ -79,7 +79,7 @@ export default function Login() {
                 className="
                   w-full bg-letusSidebar border border-white/10 rounded-lg
                   px-4 py-2.5 text-[13px] text-white placeholder-slate-600
-                  outline-none focus:border-letusBlue transition-colors
+                  outline-none focus:border-letusOrange transition-colors
                 "
               />
             </div>
@@ -97,7 +97,7 @@ export default function Login() {
               disabled={loading}
               className="
                 w-full mt-1 py-2.5 rounded-lg text-[14px] font-semibold text-white
-                bg-letusBlue hover:bg-letusBlue/90 transition-colors
+                bg-letusOrange hover:bg-letusOrange/90 transition-colors
                 disabled:opacity-60 disabled:cursor-not-allowed
               "
             >

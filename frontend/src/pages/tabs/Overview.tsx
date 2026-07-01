@@ -116,8 +116,6 @@ function SvgDonutChart({
 
   return (
     <svg width={size} height={size} className="shrink-0">
-      {/* 배경 트랙 */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth={thickness} />
       {/* 세그먼트 */}
       {sum > 0 && arcs.map((arc, i) => (
         <circle

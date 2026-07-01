@@ -99,7 +99,7 @@ function SvgDonutChart({
   const cx = size / 2
   const cy = size / 2
   const C  = 2 * Math.PI * r
-  const GAP = thickness + 3
+  const GAP = 3  // 세그먼트 사이 얇은 흰선 구분용
 
   const sum = data.reduce((s, d) => s + d.value, 0)
 
@@ -116,6 +116,8 @@ function SvgDonutChart({
 
   return (
     <svg width={size} height={size} className="shrink-0">
+      {/* 흰색 링 기준선 — 세그먼트 사이 3px 빈 구간을 덮어 링이 완전하게 보임 */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="white" strokeWidth={thickness} />
       {/* 세그먼트 */}
       {sum > 0 && arcs.map((arc, i) => (
         <circle
@@ -124,7 +126,7 @@ function SvgDonutChart({
           fill="none"
           stroke={arc.color}
           strokeWidth={thickness}
-          strokeLinecap="round"
+          strokeLinecap="butt"
           strokeDasharray={`${arc.arcLen} ${C}`}
           strokeDashoffset={C / 4 - arc.start * C}
           className={onSegmentClick ? 'cursor-pointer transition-opacity hover:opacity-75' : ''}

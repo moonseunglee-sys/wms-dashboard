@@ -18,7 +18,7 @@ export type Metric = 'amount' | 'box'
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 /* ── 포맷 헬퍼 ── */
-const fmtM   = (v: number) => `${v.toFixed(1)}M`
+const fmtM   = (v: number) => `${v.toFixed(1)}백만`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -281,7 +281,7 @@ export default function Overview({ period, metric, granularity }: Props) {
       <Card>
         <CardHeader className="px-5 py-3.5 border-b border-border">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">{granLabel} 피킹금액 추이 (M)</CardTitle>
+            <CardTitle className="text-sm font-semibold">{granLabel} 피킹금액 추이 (백만원)</CardTitle>
             <span className="text-xs text-muted-foreground">전체 기간 기준</span>
           </div>
         </CardHeader>
@@ -295,7 +295,7 @@ export default function Overview({ period, metric, granularity }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#6b7280' }}
-                  tickFormatter={v => `${v}M`}
+                  tickFormatter={v => `${v}백만`}
                 />
                 <Tooltip
                   formatter={(v: number, name: string) =>

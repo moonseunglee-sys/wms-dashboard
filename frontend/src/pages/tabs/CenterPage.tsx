@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
-const fmtM   = (v: number) => `${v.toFixed(1)}M`
+const fmtM   = (v: number) => `${v.toFixed(1)}백만`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -63,7 +63,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const isAmt = metric === 'amount'
   const scale = metricScale(metric)
-  const unit = isAmt ? 'M' : '박스'
+  const unit = isAmt ? '백만원' : '박스'
   const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
   /* ── 센터별 KPI (선택 기간) ─────────────────────── */
@@ -169,7 +169,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
               <YAxis
                 tick={{ fontSize: 11, fill: '#6b7280' }}
-                tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
+                tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
               />
               <Tooltip
                 formatter={(v: number, name: string) =>
@@ -243,7 +243,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#6b7280' }}
-                  tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
+                  tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
                 />
                 <Tooltip
                   formatter={(v: number, name: string) => [isAmt ? fmtM(v) : fmtNum(v), name]}

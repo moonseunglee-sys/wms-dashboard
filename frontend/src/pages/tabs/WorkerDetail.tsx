@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props { period: Period; metric: Metric }
 
-const fmtM   = (v: number) => `${v.toFixed(1)}M`
+const fmtM   = (v: number) => `${v.toFixed(1)}백만`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -169,7 +169,7 @@ function WorkerTable({ workers, metric, onSelect }: {
             <th className="text-left py-2 px-3 text-gray-400 font-medium">구역</th>
             <th className="text-left py-2 px-3 text-gray-400 font-medium">시프트</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">가동률</th>
-            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M)' : '박스수'}</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(백만)' : '박스수'}</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">표준시간</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">실적시간</th>
           </tr>
@@ -267,7 +267,7 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
             <tr className="border-b border-gray-100">
               <th className="text-left py-1.5 px-2 text-gray-400 font-medium">날짜</th>
               <th className="text-right py-1.5 px-2 text-gray-400 font-medium">가동률</th>
-              <th className="text-right py-1.5 px-2 text-gray-400 font-medium">{isAmt ? '금액(M)' : '박스수'}</th>
+              <th className="text-right py-1.5 px-2 text-gray-400 font-medium">{isAmt ? '금액(백만)' : '박스수'}</th>
               <th className="text-right py-1.5 px-2 text-gray-400 font-medium">표준시간</th>
               <th className="text-right py-1.5 px-2 text-gray-400 font-medium">실적시간</th>
             </tr>

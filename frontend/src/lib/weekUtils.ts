@@ -109,3 +109,24 @@ export function today(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
+
+/** 어제 날짜 문자열 'YYYY-MM-DD' */
+export function yesterday(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+/** 최근 데이터가 포함된 월 Period (어제 기준, 금~목 주간 업로드 패턴) */
+export function recentDataMonth(): Period {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return { type: 'monthly', year: d.getFullYear(), month: d.getMonth() + 1 }
+}
+
+/** 최근 데이터가 포함된 주(금~목) Period */
+export function recentDataWeek(): Period {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)  // 어제 기준 주
+  return { type: 'weekly', weekStart: fmt(getWeekStart(d)) }
+}

@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
-const fmtM   = (v: number) => `${v.toFixed(1)}M`
+const fmtM   = (v: number) => `${v.toFixed(1)}백만`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -22,7 +22,7 @@ function metricVal(r: ZoneDaily, metric: Metric) {
   return metric === 'amount' ? (r.pick_amount ?? 0) : (r.pick_box ?? 0)
 }
 function metricScale(metric: Metric) { return metric === 'amount' ? 1_000_000 : 1 }
-function metricUnit(metric: Metric)  { return metric === 'amount' ? 'M' : '박스' }
+function metricUnit(metric: Metric)  { return metric === 'amount' ? '백만원' : '박스' }
 
 /* ── Zone별 집계 ── */
 interface ZoneRow {
@@ -92,7 +92,7 @@ function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
           <tr className="border-b border-gray-100">
             <th className="text-left py-2 px-3 text-gray-400 font-medium">구역</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">가동률</th>
-            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M)' : '박스수'}</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(백만)' : '박스수'}</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">표준시간</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">실적시간</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">가동일수</th>
@@ -177,7 +177,7 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
     totalBox += r.pick_box ?? 0
     totalAmt += r.pick_amount ?? 0
   }
-  const eff = totalStd > 0 ? (totalAct / totalStd) * 100 : 0
+  const eff = totalAct > 0 ? (totalStd / totalAct) * 100 : 0
   const unit = metricUnit(metric)
   const isAmt = metric === 'amount'
 
@@ -260,7 +260,7 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#6b7280' }}
-                  tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
+                  tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
                 />
                 <Tooltip
                   formatter={(v: number, name: string) =>

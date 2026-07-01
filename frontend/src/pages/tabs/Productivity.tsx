@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
-const fmtM   = (v: number) => `${v.toFixed(1)}M`
+const fmtM   = (v: number) => `${v.toFixed(1)}백만`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 
 function metricVal(r: ZoneDaily, metric: Metric) {
@@ -120,7 +120,7 @@ export default function Productivity({ period, metric, granularity }: Props) {
   const { start, end } = periodToRange(period)
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const isAmt = metric === 'amount'
-  const unit = isAmt ? 'M' : '박스'
+  const unit = isAmt ? '백만원' : '박스'
   const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
   /* 전체 KPI — 선택 기간 기준 */
@@ -131,7 +131,7 @@ export default function Productivity({ period, metric, granularity }: Props) {
     totalAct += r.act_time_hr
     totalVal += metricVal(r, metric) / scale
   }
-  const overallEff = totalStd > 0 ? (totalAct / totalStd) * 100 : 0
+  const overallEff = totalAct > 0 ? (totalStd / totalAct) * 100 : 0
   const pickPerHr  = totalAct > 0 ? totalVal / totalAct : 0
 
   /* 차트 데이터 — 일별은 선택 기간, 주간/월간은 전체 기반 */
@@ -266,7 +266,7 @@ export default function Productivity({ period, metric, granularity }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#6b7280' }}
-                  tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
+                  tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
                 />
                 <Tooltip
                   formatter={(v: number, name: string) => [

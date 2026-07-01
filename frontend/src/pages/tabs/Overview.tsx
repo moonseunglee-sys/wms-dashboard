@@ -247,7 +247,7 @@ function CenterCard({ center, kpi, metric, onClick }: {
           </div>
           <div className="bg-gray-50 rounded-lg px-3 py-2">
             <p className="text-[10px] text-gray-400 mb-0.5">시간당 박스</p>
-            <p className="text-sm font-semibold text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}/h</p>
+            <p className="text-sm font-semibold text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}박스/h</p>
           </div>
         </div>
         <div className="flex gap-4 mt-3 text-xs text-gray-400">
@@ -300,7 +300,7 @@ function OwnerCard({ owner, kpi, metric, onClick }: {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">시간당 박스</span>
-            <span className="font-medium text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}/h</span>
+            <span className="font-medium text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}박스/h</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">표준/실적</span>

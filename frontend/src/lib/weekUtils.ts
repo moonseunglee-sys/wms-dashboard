@@ -37,6 +37,12 @@ export function periodToRange(period: Period): { start: string; end: string } {
       end:   fmt(last),
     }
   }
+  if (period.type === 'yearly') {
+    return {
+      start: `${period.year}-01-01`,
+      end:   `${period.year}-12-31`,
+    }
+  }
   return { start: period.start, end: period.end }
 }
 
@@ -78,8 +84,8 @@ export function dateToWeekStart(dateStr: string): string {
   return fmt(getWeekStart(new Date(dateStr)))
 }
 
-/* ── Granularity (일별/주간/월간) ────────────────────── */
-export type Granularity = 'day' | 'week' | 'month'
+/* ── Granularity (일별/주간/월간/연간) ────────────────── */
+export type Granularity = 'day' | 'week' | 'month' | 'year'
 
 export function dateToMonthKey(dateStr: string): string {
   return dateStr.slice(0, 7)  // 'YYYY-MM'
@@ -92,6 +98,7 @@ export function monthLabel(monthKey: string): string {
 export function dateToBucket(dateStr: string, gran: Granularity): string {
   if (gran === 'day')   return dateStr
   if (gran === 'week')  return dateToWeekStart(dateStr)
+  if (gran === 'year')  return dateStr.slice(0, 4)
   return dateToMonthKey(dateStr)
 }
 
@@ -100,8 +107,16 @@ export function bucketLabel(bucket: string, gran: Granularity): string {
     const [, mm, dd] = bucket.split('-')
     return `${parseInt(mm)}/${parseInt(dd)}`
   }
-  if (gran === 'week') return weekLabel(bucket)
+  if (gran === 'week')  return weekLabel(bucket)
+  if (gran === 'year')  return `${bucket}년`
   return monthLabel(bucket)
+}
+
+/** 최근 데이터가 포함된 연도 Period (전년도 기준) */
+export function recentDataYear(): Period {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return { type: 'yearly', year: d.getFullYear() - 1 }
 }
 
 /** 오늘 날짜 문자열 'YYYY-MM-DD' */

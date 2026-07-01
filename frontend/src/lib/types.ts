@@ -2,6 +2,7 @@
 export type Period =
   | { type: 'weekly';  weekStart: string }          // 'YYYY-MM-DD' (금요일)
   | { type: 'monthly'; year: number; month: number }
+  | { type: 'yearly';  year: number }               // 연간
   | { type: 'custom';  start: string; end: string }
   | { type: 'all' }                                 // 전체기간
 

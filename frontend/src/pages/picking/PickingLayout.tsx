@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { Period } from '../../lib/types'
-import { yesterday, recentDataWeek, recentDataMonth, periodToRange } from '../../lib/weekUtils'
+import { yesterday, recentDataWeek, recentDataMonth, recentDataYear, periodToRange } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
 import type { Metric } from '../tabs/Overview'
 
@@ -19,10 +19,11 @@ const PAGE_LABELS: Record<string, string> = {
   '/picking/worker':       '작업자별 상세',
 }
 
-/** 집계 단위별 기본 기간: 일별=전일, 주간=최근 데이터 주(금~목), 월간=최근 데이터 월 */
+/** 집계 단위별 기본 기간 */
 function defaultPeriodFor(g: Granularity): Period {
   if (g === 'day')  return { type: 'custom', start: yesterday(), end: yesterday() }
   if (g === 'week') return recentDataWeek()
+  if (g === 'year') return recentDataYear()
   return recentDataMonth()
 }
 
@@ -47,14 +48,20 @@ export default function PickingLayout() {
   const initR = periodToRange(defaultPeriodFor('day'))
   const [pickerStart, setPickerStart] = useState(initR.start)
   const [pickerEnd, setPickerEnd]     = useState(initR.end)
+  const [pickerYear, setPickerYear]   = useState(new Date().getFullYear() - 1)
   const pickerRef = useRef<HTMLDivElement>(null)
+  const YEAR_LIST = [2023, 2024, 2025, 2026]
 
+  const navigate    = useNavigate()
   const { pathname } = useLocation()
   const pageLabel = PAGE_LABELS[pathname] ?? '피킹생산성'
+  const canGoBack = pathname !== '/picking/overview'
   const ctx: PickingCtx = { period, metric, granularity }
 
   const range = periodToRange(period)
-  const rangeLabel = range.start === range.end ? range.start : `${range.start} ~ ${range.end}`
+  const rangeLabel = period.type === 'yearly'
+    ? `${period.year}년`
+    : range.start === range.end ? range.start : `${range.start} ~ ${range.end}`
 
   function handleGranularity(g: Granularity) {
     const p = defaultPeriodFor(g)
@@ -67,6 +74,7 @@ export default function PickingLayout() {
   }
 
   function openPicker() {
+    if (period.type === 'yearly') setPickerYear(period.year)
     const r = periodToRange(period)
     setPickerStart(r.start)
     setPickerEnd(r.end)
@@ -95,6 +103,7 @@ export default function PickingLayout() {
     { key: 'day',   label: '일별' },
     { key: 'week',  label: '주간' },
     { key: 'month', label: '월간' },
+    { key: 'year',  label: '연간' },
   ]
 
   return (
@@ -103,6 +112,19 @@ export default function PickingLayout() {
       {/* ── 서브 헤더 ── */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="flex items-center px-6 gap-3 h-11">
+
+          {canGoBack && (
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-letusBlue transition-colors shrink-0 -ml-1"
+              title="뒤로가기"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              <span className="hidden sm:inline">뒤로</span>
+            </button>
+          )}
 
           <span className="text-sm font-semibold text-gray-700 shrink-0">{pageLabel}</span>
           <span className="text-gray-200 select-none">|</span>
@@ -146,34 +168,62 @@ export default function PickingLayout() {
 
             {showPicker && (
               <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50 w-[220px]">
-                <p className="text-[11px] font-semibold text-gray-600 mb-3">기간 직접 선택</p>
-                <div className="space-y-2.5">
-                  <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">시작일</label>
-                    <input
-                      type="date"
-                      value={pickerStart}
-                      onChange={e => setPickerStart(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-letusBlue"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">종료일</label>
-                    <input
-                      type="date"
-                      value={pickerEnd}
-                      onChange={e => setPickerEnd(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-letusBlue"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={applyCustomRange}
-                  disabled={!pickerStart || !pickerEnd}
-                  className="mt-3 w-full bg-letusBlue hover:bg-blue-600 text-white text-xs font-semibold py-1.5 rounded-lg disabled:opacity-40 transition-colors"
-                >
-                  적용
-                </button>
+                {granularity === 'year' ? (
+                  <>
+                    <p className="text-[11px] font-semibold text-gray-600 mb-3">연도 선택</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {YEAR_LIST.map(y => (
+                        <button
+                          key={y}
+                          onClick={() => {
+                            setPeriod({ type: 'yearly', year: y })
+                            setPickerYear(y)
+                            setShowPicker(false)
+                          }}
+                          className={[
+                            'py-2 rounded-lg text-xs font-semibold transition-all',
+                            pickerYear === y
+                              ? 'bg-letusBlue text-white'
+                              : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-letusBlue',
+                          ].join(' ')}
+                        >
+                          {y}년
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] font-semibold text-gray-600 mb-3">기간 직접 선택</p>
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-1">시작일</label>
+                        <input
+                          type="date"
+                          value={pickerStart}
+                          onChange={e => setPickerStart(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-letusBlue"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-1">종료일</label>
+                        <input
+                          type="date"
+                          value={pickerEnd}
+                          onChange={e => setPickerEnd(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-letusBlue"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={applyCustomRange}
+                      disabled={!pickerStart || !pickerEnd}
+                      className="mt-3 w-full bg-letusBlue hover:bg-blue-600 text-white text-xs font-semibold py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+                    >
+                      적용
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>

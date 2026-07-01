@@ -11,10 +11,12 @@ import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartTooltip } from '@/components/ChartTooltip'
 
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 const fmtM   = (v: number) => `${v.toFixed(1)}백만`
+const fmtBox = (v: number) => `${v.toLocaleString('ko-KR')}박스`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -22,6 +24,9 @@ function metricVal(r: ZoneDaily, metric: Metric) {
   return metric === 'amount' ? (r.pick_amount ?? 0) : (r.pick_box ?? 0)
 }
 function metricScale(metric: Metric) { return metric === 'amount' ? 1_000_000 : 1 }
+function metricFmt(v: number, metric: Metric) {
+  return metric === 'amount' ? fmtM(v / 1_000_000) : fmtBox(v)
+}
 function metricUnit(metric: Metric)  { return metric === 'amount' ? '백만원' : '박스' }
 
 /* ── Zone별 집계 ── */
@@ -224,7 +229,7 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
             <div className="flex gap-8 justify-around">
               <StatBadge
                 label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
-                value={isAmt ? `${fmtM(totalAmt / 1_000_000)}` : fmtNum(totalBox)}
+                value={isAmt ? fmtM(totalAmt / 1_000_000) : fmtBox(totalBox)}
                 color={OWNER_COLOR[selectedOwner]}
               />
               <StatBadge label="평균 가동률" value={fmtPct(eff)}
@@ -263,12 +268,14 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
                   tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) =>
-                    name === 'total'
-                      ? [`${isAmt ? fmtM(v) : fmtNum(v)}`, '합계']
-                      : [`${isAmt ? fmtM(v) : fmtNum(v)}`, name]
-                  }
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  content={(props: any) => (
+                    <ChartTooltip
+                      active={props.active}
+                      payload={props.payload}
+                      label={props.label}
+                      formatter={(v) => isAmt ? fmtM(v) : fmtBox(v)}
+                    />
+                  )}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
                   formatter={(v: string) => v === 'total' ? '합계' : v} />

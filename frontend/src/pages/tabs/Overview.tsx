@@ -1,6 +1,6 @@
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer, CartesianGrid,
+  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell,
 } from 'recharts'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
@@ -12,13 +12,14 @@ import {
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartTooltip } from '@/components/ChartTooltip'
 
 export type Metric = 'amount' | 'box'
 
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
-/* ── 포맷 헬퍼 ── */
 const fmtM   = (v: number) => `${v.toFixed(1)}백만`
+const fmtBox = (v: number) => `${v.toLocaleString('ko-KR')}박스`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -32,7 +33,6 @@ function effBadge(eff: number) {
     : 'bg-red-50 text-red-500'
 }
 
-/* ── 집계 헬퍼 ── */
 interface KpiResult {
   amount: number; box: number
   std: number;    act: number
@@ -63,7 +63,6 @@ function aggregateKpi(rows: ZoneDaily[]): KpiResult {
   }
 }
 
-/* ── 추이 데이터 ── */
 function toTrendData(allRows: ZoneDaily[], gran: Granularity) {
   const map = new Map<string, Record<string, number>>()
   for (const r of allRows) {
@@ -82,7 +81,6 @@ function toTrendData(allRows: ZoneDaily[], gran: Granularity) {
     }))
 }
 
-/* ── 서브컴포넌트: 전체 KPI 카드 ── */
 function KpiCard({ label, value, sub, color }: {
   label: string; value: string; sub?: string; color?: string
 }) {
@@ -98,7 +96,62 @@ function KpiCard({ label, value, sub, color }: {
   )
 }
 
-/* ── 서브컴포넌트: 센터 요약 카드 ── */
+/* ── 도넛 비중 카드 ── */
+function DonutCard({ title, data, colors, total, totalLabel }: {
+  title: string
+  data: { name: string; value: number }[]
+  colors: string[]
+  total: string
+  totalLabel: string
+}) {
+  const sum = data.reduce((s, d) => s + d.value, 0)
+  return (
+    <Card>
+      <CardHeader className="px-5 py-3.5 border-b border-border">
+        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">
+        <div className="flex items-center gap-6">
+          <div className="relative shrink-0">
+            <PieChart width={130} height={130}>
+              <Pie
+                data={data}
+                cx={65} cy={65}
+                innerRadius={42} outerRadius={60}
+                paddingAngle={2}
+                dataKey="value"
+                startAngle={90} endAngle={-270}
+              >
+                {data.map((_, i) => (
+                  <Cell key={i} fill={colors[i % colors.length]} strokeWidth={0} />
+                ))}
+              </Pie>
+            </PieChart>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <p className="text-sm font-bold text-gray-800 leading-tight">{total}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{totalLabel}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 space-y-2">
+            {data.map((d, i) => {
+              const pct = sum > 0 ? ((d.value / sum) * 100).toFixed(1) : '0.0'
+              return (
+                <div key={d.name} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: colors[i] }} />
+                  <span className="text-xs text-gray-600 flex-1 truncate">{d.name}</span>
+                  <span className="text-xs font-bold text-gray-700">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function CenterCard({ center, kpi, metric }: {
   center: string; kpi: KpiResult; metric: Metric
 }) {
@@ -108,7 +161,6 @@ function CenterCard({ center, kpi, metric }: {
   return (
     <Card>
       <CardContent className="p-5">
-        {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
@@ -119,9 +171,8 @@ function CenterCard({ center, kpi, metric }: {
             {fmtPct(kpi.eff)}
           </span>
         </div>
-        {/* 주요 지표 */}
         <p className="text-2xl font-bold mb-3" style={{ color }}>
-          {isAmt ? fmtM(kpi.amount) : fmtNum(kpi.box)}
+          {isAmt ? fmtM(kpi.amount) : fmtBox(kpi.box)}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-gray-50 rounded-lg px-3 py-2">
@@ -145,7 +196,6 @@ function CenterCard({ center, kpi, metric }: {
   )
 }
 
-/* ── 서브컴포넌트: 브랜드 요약 카드 ── */
 function OwnerCard({ owner, kpi, metric }: {
   owner: string; kpi: KpiResult; metric: Metric
 }) {
@@ -155,7 +205,6 @@ function OwnerCard({ owner, kpi, metric }: {
   return (
     <Card>
       <CardContent className="p-5">
-        {/* 헤더 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
@@ -166,9 +215,8 @@ function OwnerCard({ owner, kpi, metric }: {
             {fmtPct(kpi.eff)}
           </span>
         </div>
-        {/* 주요 수치 */}
         <p className="text-xl font-bold mb-3" style={{ color }}>
-          {isAmt ? fmtM(kpi.amount) : fmtNum(kpi.box)}
+          {isAmt ? fmtM(kpi.amount) : fmtBox(kpi.box)}
         </p>
         <div className="space-y-1 text-xs">
           <div className="flex justify-between">
@@ -189,7 +237,6 @@ function OwnerCard({ owner, kpi, metric }: {
   )
 }
 
-/* ── 메인 컴포넌트 ── */
 export default function Overview({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
 
@@ -204,28 +251,33 @@ export default function Overview({ period, metric, granularity }: Props) {
     )
   }
 
-  /* 기간 필터 — KPI/요약 카드 전용 */
   const { start, end } = periodToRange(period)
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
+  const isAmt = metric === 'amount'
 
-  /* 전체 KPI */
   const total = aggregateKpi(pRows)
-
-  /* 센터별 KPI */
   const centerKpi = Object.fromEntries(
     CENTERS.map(c => [c, aggregateKpi(pRows.filter(r => CENTER_OWNERS[c].includes(r.owner)))])
   )
-
-  /* 브랜드별 KPI */
   const ownerKpi = Object.fromEntries(
     OWNERS.map(o => [o, aggregateKpi(pRows.filter(r => r.owner === o))])
   )
 
-  /* 추이 차트 — 일별은 선택 기간, 주간/월간은 전체 히스토리 */
   const chartRows = granularity === 'day' ? pRows : rows
   const trendData = toTrendData(chartRows, granularity)
   const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
-  const isAmt = metric === 'amount'
+
+  /* 도넛 데이터 */
+  const brandDonutData = OWNERS.map(o => ({
+    name: o,
+    value: isAmt ? ownerKpi[o].amount : ownerKpi[o].box,
+  }))
+  const centerDonutData = CENTERS.map(c => ({
+    name: c,
+    value: isAmt ? centerKpi[c].amount : centerKpi[c].box,
+  }))
+
+  const donutTotal = isAmt ? fmtM(total.amount) : fmtBox(total.box)
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -240,7 +292,7 @@ export default function Overview({ period, metric, granularity }: Props) {
         />
         <KpiCard
           label="총 피킹박스수"
-          value={fmtNum(total.box)}
+          value={fmtBox(total.box)}
           color="#6366f1"
         />
         <KpiCard
@@ -254,6 +306,24 @@ export default function Overview({ period, metric, granularity }: Props) {
           value={`${fmtM(total.amtPerHr)}/h`}
           sub={`${fmtNum(Math.round(total.boxPerHr))}박스/h`}
           color="#0ea5e9"
+        />
+      </div>
+
+      {/* ── 비중 분석 (도넛) ── */}
+      <div className="grid grid-cols-2 gap-4">
+        <DonutCard
+          title="브랜드별 피킹 비중"
+          data={brandDonutData}
+          colors={OWNERS.map(o => OWNER_COLOR[o])}
+          total={donutTotal}
+          totalLabel="합계"
+        />
+        <DonutCard
+          title="센터별 피킹 비중"
+          data={centerDonutData}
+          colors={CENTERS.map(c => CENTER_COLOR[c])}
+          total={donutTotal}
+          totalLabel="합계"
         />
       </div>
 
@@ -277,7 +347,7 @@ export default function Overview({ period, metric, granularity }: Props) {
         </div>
       </div>
 
-      {/* ── 피킹실적 추이 — 전체 히스토리 ── */}
+      {/* ── 피킹실적 추이 ── */}
       <Card>
         <CardHeader className="px-5 py-3.5 border-b border-border">
           <div className="flex items-center justify-between">
@@ -298,12 +368,14 @@ export default function Overview({ period, metric, granularity }: Props) {
                   tickFormatter={v => `${v}백만`}
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) =>
-                    name === 'total'
-                      ? [fmtM(v), '합계']
-                      : [fmtM(v), name]
-                  }
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  content={(props: any) => (
+                    <ChartTooltip
+                      active={props.active}
+                      payload={props.payload}
+                      label={props.label}
+                      formatter={(v) => fmtM(v)}
+                    />
+                  )}
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 12, paddingTop: 8 }}

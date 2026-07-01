@@ -10,11 +10,13 @@ import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartTooltip } from '@/components/ChartTooltip'
 
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 const fmtM   = (v: number) => `${v.toFixed(1)}백만`
+const fmtBox = (v: number) => `${v.toLocaleString('ko-KR')}박스`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 
 function metricVal(r: ZoneDaily, metric: Metric) {
@@ -160,7 +162,7 @@ export default function Productivity({ period, metric, granularity }: Props) {
               시간당 피킹 ({unit}/h)
             </p>
             <p className="text-2xl font-bold text-[#FF6B35]">
-              {isAmt ? fmtM(pickPerHr) : fmtNum(Math.round(pickPerHr))}
+              {isAmt ? fmtM(pickPerHr) : fmtBox(Math.round(pickPerHr))}
             </p>
             <p className="text-xs text-muted-foreground mt-1">실적시간 기준</p>
           </CardContent>
@@ -189,8 +191,14 @@ export default function Productivity({ period, metric, granularity }: Props) {
                 tickFormatter={v => `${v}%`}
               />
               <Tooltip
-                formatter={(v: number, name: string) => [`${v}%`, name]}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                content={(props: any) => (
+                  <ChartTooltip
+                    active={props.active}
+                    payload={props.payload}
+                    label={props.label}
+                    formatter={(v) => `${v}%`}
+                  />
+                )}
               />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
               <ReferenceLine y={100} stroke="#6b7280" strokeDasharray="4 2" strokeWidth={1} label={{ value: '100%', position: 'right', fontSize: 10, fill: '#6b7280' }} />
@@ -269,11 +277,14 @@ export default function Productivity({ period, metric, granularity }: Props) {
                   tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [
-                    isAmt ? `${fmtM(v)}/h` : `${fmtNum(Math.round(v))}박스/h`,
-                    name,
-                  ]}
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  content={(props: any) => (
+                    <ChartTooltip
+                      active={props.active}
+                      payload={props.payload}
+                      label={props.label}
+                      formatter={(v) => isAmt ? `${fmtM(v)}/h` : `${fmtBox(Math.round(v))}/h`}
+                    />
+                  )}
                 />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 {OWNERS.map(o => (

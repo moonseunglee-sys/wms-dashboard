@@ -11,10 +11,12 @@ import type { ZoneDaily } from '../../lib/supabase'
 import type { Period, WorkerAgg, DailyPoint } from '../../lib/types'
 import type { Metric } from './Overview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartTooltip } from '@/components/ChartTooltip'
 
 interface Props { period: Period; metric: Metric }
 
 const fmtM   = (v: number) => `${v.toFixed(1)}백만`
+const fmtBox = (v: number) => `${v.toLocaleString('ko-KR')}박스`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -71,7 +73,7 @@ function BrandGrid({ rows, metric, onSelect }: {
         }
         const eff = act > 0 ? (std / act) * 100 : 0
         const isAmt = metric === 'amount'
-        const primary = isAmt ? `${fmtM(amt / 1_000_000)}` : fmtNum(box)
+        const primary = isAmt ? fmtM(amt / 1_000_000) : fmtBox(box)
         return (
           <button
             key={owner}
@@ -139,7 +141,7 @@ function ZoneGrid({ rows, owner, metric, onSelect }: {
             </span>
           </div>
           <p className="text-lg font-bold" style={{ color }}>
-            {isAmt ? `${fmtM(z.amt / 1_000_000)}` : fmtNum(z.box)}
+            {isAmt ? fmtM(z.amt / 1_000_000) : fmtBox(z.box)}
           </p>
           <div className="mt-1 text-xs text-gray-400">{z.days}일 운영</div>
           <div className="mt-2 text-xs text-gray-300 group-hover:text-letusBlue flex items-center gap-1">
@@ -234,8 +236,8 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
           <span className="text-gray-400">{isAmt ? '총 금액 ' : '총 박스 '}</span>
           <span className="font-bold text-gray-700">
             {isAmt
-              ? `${fmtM(daily.reduce((s, d) => s + d.pick_amount, 0) / 1_000_000)}`
-              : fmtNum(daily.reduce((s, d) => s + d.pick_box, 0))}
+              ? fmtM(daily.reduce((s, d) => s + d.pick_amount, 0) / 1_000_000)
+              : fmtBox(daily.reduce((s, d) => s + d.pick_box, 0))}
           </span>
         </div>
       </div>
@@ -249,8 +251,14 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} />
             <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} domain={[0, 'auto']} unit="%" />
             <Tooltip
-              formatter={(v: number) => [`${v}%`, '가동률']}
-              contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
+              content={(props: any) => (
+                <ChartTooltip
+                  active={props.active}
+                  payload={props.payload}
+                  label={props.label}
+                  formatter={(v) => `${v}%`}
+                />
+              )}
             />
             <ReferenceLine y={100} stroke="#10b981" strokeDasharray="4 2" strokeWidth={1.5} />
             <Bar dataKey="eff" fill="#FF6B35" radius={[3,3,0,0]} maxBarSize={32}

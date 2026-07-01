@@ -2,6 +2,7 @@ import {
   ComposedChart, Bar, Line, BarChart,
   XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell,
 } from 'recharts'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
@@ -11,10 +12,12 @@ import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartTooltip } from '@/components/ChartTooltip'
 
 interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 const fmtM   = (v: number) => `${v.toFixed(1)}백만`
+const fmtBox = (v: number) => `${v.toLocaleString('ko-KR')}박스`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 
@@ -23,6 +26,9 @@ function metricVal(r: ZoneDaily, metric: Metric) {
 }
 function metricScale(metric: Metric) { return metric === 'amount' ? 1_000_000 : 1 }
 
+function effColor(eff: number) {
+  return eff >= 100 ? '#10b981' : eff >= 80 ? '#f97316' : '#ef4444'
+}
 function effBadge(eff: number) {
   return eff >= 100 ? 'bg-emerald-50 text-emerald-600'
     : eff >= 80 ? 'bg-orange-50 text-orange-500'
@@ -66,7 +72,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
   const unit = isAmt ? '백만원' : '박스'
   const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
-  /* ── 센터별 KPI (선택 기간) ─────────────────────── */
+  /* ── 센터별 KPI ── */
   const centerKpi = CENTERS.map(center => {
     const cOwners = CENTER_OWNERS[center]
     const cRows = pRows.filter(r => cOwners.includes(r.owner))
@@ -88,8 +94,9 @@ export default function CenterPage({ period, metric, granularity }: Props) {
     }
   })
 
-  /* ── 센터별 실적 추이 — 일별은 선택 기간, 주간/월간은 전체 ── */
+  /* ── 차트 데이터 ── */
   const chartRows = granularity === 'day' ? pRows : rows
+
   const trendMap = new Map<string, Record<string, number>>()
   for (const r of chartRows) {
     const bucket = dateToBucket(r.work_date, granularity)
@@ -107,7 +114,6 @@ export default function CenterPage({ period, metric, granularity }: Props) {
       total: +(e['_total'] ?? 0).toFixed(2),
     }))
 
-  /* ── 1센터 브랜드 비중 추이 ─────────────────────── */
   const c1Owners = CENTER_OWNERS['1센터']
   const c1TrendMap = new Map<string, Record<string, number>>()
   for (const r of chartRows.filter(r => c1Owners.includes(r.owner))) {
@@ -122,6 +128,8 @@ export default function CenterPage({ period, metric, granularity }: Props) {
       label: bucketLabel(bucket, granularity),
       ...Object.fromEntries(c1Owners.map(o => [o, +(e[o] ?? 0).toFixed(2)])),
     }))
+
+  const tooltipFmt = (v: number) => isAmt ? fmtM(v) : fmtBox(v)
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -141,7 +149,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
                 </span>
               </div>
               <p className="text-2xl font-bold" style={{ color: CENTER_COLOR[c.center] }}>
-                {isAmt ? fmtM(c.val) : fmtNum(c.val)}
+                {isAmt ? fmtM(c.val) : fmtBox(c.val)}
               </p>
               <div className="flex gap-3 mt-2 text-xs text-gray-400">
                 <span>{c.owners.join(' · ')}</span>
@@ -158,7 +166,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
         ))}
       </div>
 
-      {/* 센터별 실적 추이 — 전체 히스토리 */}
+      {/* 센터별 실적 추이 */}
       <SectionCard title={`센터별 피킹실적 ${granLabel} 추이 (${unit})`}>
         {trendData.length === 0 ? (
           <div className="flex items-center justify-center h-40 text-gray-300 text-xs">데이터 없음</div>
@@ -172,12 +180,14 @@ export default function CenterPage({ period, metric, granularity }: Props) {
                 tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
               />
               <Tooltip
-                formatter={(v: number, name: string) =>
-                  name === 'total'
-                    ? [isAmt ? fmtM(v) : fmtNum(v), '합계']
-                    : [isAmt ? fmtM(v) : fmtNum(v), name]
-                }
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                content={(props: any) => (
+                  <ChartTooltip
+                    active={props.active}
+                    payload={props.payload}
+                    label={props.label}
+                    formatter={tooltipFmt}
+                  />
+                )}
               />
               <Legend
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
@@ -196,39 +206,53 @@ export default function CenterPage({ period, metric, granularity }: Props) {
         )}
       </SectionCard>
 
-      {/* 센터별 가동률 + 1센터 브랜드 비중 나란히 */}
+      {/* 센터별 가동률 도넛 + 1센터 브랜드 비중 추이 */}
       <div className="grid grid-cols-2 gap-5">
 
-        {/* 센터별 가동률 — 프로그레스 바 */}
+        {/* 센터별 가동률 — 도넛 게이지 */}
         <SectionCard title="센터별 가동률" subtitle="선택 기간 기준">
-          <div className="space-y-5 pt-1">
-            {[...centerKpi].sort((a, b) => b.eff - a.eff).map(c => (
-              <div key={c.center}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ background: CENTER_COLOR[c.center] }} />
-                    <span className="text-sm font-medium text-gray-600">{c.center}</span>
-                    <span className="text-xs text-gray-400">({c.owners.join('·')})</span>
+          <div className="flex gap-3 justify-around py-2">
+            {[...centerKpi].sort((a, b) => b.eff - a.eff).map(c => {
+              const filled  = Math.min(c.eff, 100)
+              const rest    = Math.max(0, 100 - filled)
+              const gColor  = effColor(c.eff)
+              const gaugeData = [
+                { name: '가동', value: filled },
+                { name: '미달', value: rest },
+              ]
+              return (
+                <div key={c.center} className="flex flex-col items-center gap-2">
+                  <div className="relative">
+                    <PieChart width={110} height={110}>
+                      <Pie
+                        data={gaugeData}
+                        cx={55} cy={55}
+                        innerRadius={35} outerRadius={50}
+                        startAngle={90} endAngle={-270}
+                        dataKey="value"
+                        paddingAngle={filled < 99.9 ? 3 : 0}
+                      >
+                        <Cell fill={gColor} strokeWidth={0} />
+                        <Cell fill="#f3f4f6" strokeWidth={0} />
+                      </Pie>
+                    </PieChart>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <p className="text-sm font-bold" style={{ color: gColor }}>
+                        {c.eff.toFixed(1)}%
+                      </p>
+                    </div>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${effBadge(c.eff)}`}>
-                    {fmtPct(c.eff)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ background: CENTER_COLOR[c.center] }} />
+                    <span className="text-sm font-semibold text-gray-700">{c.center}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400">{c.owners.join(' · ')}</p>
+                  <p className="text-[11px] text-gray-400">
+                    {c.std.toFixed(0)}h / {c.act.toFixed(0)}h
+                  </p>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2.5">
-                  <div
-                    className="h-2.5 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(c.eff, 120) / 1.2}%`,
-                      background: CENTER_COLOR[c.center],
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between mt-1 text-xs text-gray-400">
-                  <span>표준 {c.std.toFixed(0)}h</span>
-                  <span>실적 {c.act.toFixed(0)}h</span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </SectionCard>
 
@@ -246,8 +270,14 @@ export default function CenterPage({ period, metric, granularity }: Props) {
                   tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)}
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [isAmt ? fmtM(v) : fmtNum(v), name]}
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  content={(props: any) => (
+                    <ChartTooltip
+                      active={props.active}
+                      payload={props.payload}
+                      label={props.label}
+                      formatter={tooltipFmt}
+                    />
+                  )}
                 />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 {c1Owners.map((o, i) => (

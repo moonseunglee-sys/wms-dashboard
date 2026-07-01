@@ -55,7 +55,7 @@ function weeklyEffByOwner(rows: ZoneDaily[], gran: Granularity) {
       label: bucketLabel(bucket, gran),
       ...Object.fromEntries(OWNERS.map(o => {
         const e = bm.get(o) ?? { std: 0, act: 0 }
-        return [o, e.std > 0 ? +((e.act / e.std) * 100).toFixed(1) : null]
+        return [o, e.act > 0 ? +((e.std / e.act) * 100).toFixed(1) : null]
       })),
     }))
 }
@@ -74,7 +74,7 @@ function zoneEfficiency(rows: ZoneDaily[]): ZoneEffRow[] {
     e.act += r.act_time_hr
   }
   return [...map.values()]
-    .map(e => ({ ...e, eff: e.std > 0 ? +((e.act / e.std) * 100).toFixed(1) : 0 }))
+    .map(e => ({ ...e, eff: e.act > 0 ? +((e.std / e.act) * 100).toFixed(1) : 0 }))
     .sort((a, b) => b.eff - a.eff)
 }
 

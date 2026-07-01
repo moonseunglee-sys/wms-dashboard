@@ -69,7 +69,7 @@ function BrandGrid({ rows, metric, onSelect }: {
           box += r.pick_box ?? 0; amt += r.pick_amount ?? 0
           zones.add(r.zone)
         }
-        const eff = std > 0 ? (act / std) * 100 : 0
+        const eff = act > 0 ? (std / act) * 100 : 0
         const isAmt = metric === 'amount'
         const primary = isAmt ? `${fmtM(amt / 1_000_000)}` : fmtNum(box)
         return (
@@ -119,7 +119,7 @@ function ZoneGrid({ rows, owner, metric, onSelect }: {
     e.days.add(r.work_date)
   }
   const zones = [...zoneMap.entries()]
-    .map(([zone, e]) => ({ zone, ...e, eff: e.std > 0 ? (e.act / e.std) * 100 : 0, days: e.days.size }))
+    .map(([zone, e]) => ({ zone, ...e, eff: e.act > 0 ? (e.std / e.act) * 100 : 0, days: e.days.size }))
     .sort((a, b) => b.eff - a.eff)
 
   const isAmt = metric === 'amount'
@@ -214,7 +214,7 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
 
   const chartData = daily.map(d => ({
     date: d.work_date.slice(5), // 'MM-DD'
-    eff:  d.std_time_hr > 0 ? +((d.act_time_hr / d.std_time_hr) * 100).toFixed(1) : 0,
+    eff:  d.act_time_hr > 0 ? +((d.std_time_hr / d.act_time_hr) * 100).toFixed(1) : 0,
     value: isAmt
       ? +(( d.pick_amount / 1_000_000)).toFixed(2)
       : d.pick_box,
@@ -222,7 +222,7 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
     act: +d.act_time_hr.toFixed(1),
   }))
 
-  const avgEff = daily.reduce((s, d) => s + (d.std_time_hr > 0 ? (d.act_time_hr / d.std_time_hr) * 100 : 0), 0) / daily.length
+  const avgEff = daily.reduce((s, d) => s + (d.act_time_hr > 0 ? (d.std_time_hr / d.act_time_hr) * 100 : 0), 0) / daily.length
 
   return (
     <div className="space-y-4">
@@ -274,7 +274,7 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
           </thead>
           <tbody>
             {daily.map((d, i) => {
-              const eff = d.std_time_hr > 0 ? (d.act_time_hr / d.std_time_hr) * 100 : 0
+              const eff = d.act_time_hr > 0 ? (d.std_time_hr / d.act_time_hr) * 100 : 0
               return (
                 <tr key={d.work_date} className={i % 2 === 0 ? 'bg-gray-50/40' : ''}>
                   <td className="py-1.5 px-2 text-gray-600">{d.work_date}</td>

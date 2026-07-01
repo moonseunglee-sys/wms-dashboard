@@ -48,7 +48,7 @@ function aggregateZones(rows: ZoneDaily[]): ZoneRow[] {
   }
   return [...map.values()].map(e => ({
     ...e,
-    eff:  e.std > 0 ? (e.act / e.std) * 100 : 0,
+    eff:  e.act > 0 ? (e.std / e.act) * 100 : 0,
     days: dayCnt.get(e.zone)!.size,
   })).sort((a, b) => b.eff - a.eff)
 }

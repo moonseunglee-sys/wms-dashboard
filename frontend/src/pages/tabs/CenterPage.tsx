@@ -81,7 +81,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
     return {
       center,
       val: +val.toFixed(2),
-      eff: std > 0 ? (act / std) * 100 : 0,
+      eff: act > 0 ? (std / act) * 100 : 0,
       std, act,
       zones: zones.size,
       owners: cOwners,

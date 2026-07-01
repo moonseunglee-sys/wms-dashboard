@@ -4,7 +4,7 @@ import { periodToRange } from '../lib/weekUtils'
 import type { Period, WorkerAgg, DailyPoint } from '../lib/types'
 
 function calcEff(std: number, act: number) {
-  return std > 0 ? Math.round((act / std) * 1000) / 10 : 0
+  return act > 0 ? Math.round((std / act) * 1000) / 10 : 0
 }
 
 /** picking_worker_daily 기반 계층 드릴다운 훅

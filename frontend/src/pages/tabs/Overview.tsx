@@ -57,7 +57,7 @@ function aggregateKpi(rows: ZoneDaily[]): KpiResult {
     box,
     std, act,
     zones: zoneSet.size,
-    eff:       std > 0 ? (act / std) * 100 : 0,
+    eff:       act > 0 ? (std / act) * 100 : 0,
     amtPerHr:  act > 0 ? (amount / 1_000_000) / act : 0,
     boxPerHr:  act > 0 ? box / act : 0,
   }

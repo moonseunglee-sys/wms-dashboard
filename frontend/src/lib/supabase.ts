@@ -17,6 +17,7 @@ export interface ZoneDaily {
   shift:        string | null   // '주간' | '야간'
   std_time_hr:  number
   act_time_hr:  number
+  wms_time_hr:  number | null   // WMS 근무시간 (출퇴근 기준 전체 근무시간)
   pick_amount:  number | null
   pick_box:     number | null
 }

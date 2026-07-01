@@ -1053,21 +1053,23 @@ def _write_picking_workers(wb, slots: dict, sources: dict):
 
 
 def _read_results(ws, zone_rows: dict) -> dict:
-    # 종합실적 블록: 표준=sr, 실적=ar, 박스수=sr-1(총 피킹 박스수), 금액=sr-3(총 피킹금액)
+    # 종합실적 블록: 표준=sr, 실적=ar, 박스수=sr-1, 금액=sr-3, wms=ar-1
     return {
         zone: {
             "std_time_hr": _safe(ws.Cells(sr, 4).Value),
             "act_time_hr": _safe(ws.Cells(ar, 4).Value),
             "pick_count":  _safe(ws.Cells(sr - 1, 4).Value),
             "pick_amount": _safe(ws.Cells(sr - 3, 4).Value),
+            "wms_time_hr": _safe(ws.Cells(ar - 1, 4).Value),
         }
         for zone, (sr, ar) in zone_rows.items()
     }
 
 
 def _read_picking_workers(wb, slots: dict, date_str: str) -> list:
-    """피킹실적 시트에서 zone별 작업자 슬롯을 읽어 작업자별 4지표 dict 리스트 반환.
-       열: C(3)=작업자명, H(8)=박스수, I(9)=총피킹금액, L(12)=표준시간hr, M(13)=실적시간hr.
+    """피킹실적 시트에서 zone별 작업자 슬롯을 읽어 작업자별 지표 dict 리스트 반환.
+       열: C(3)=작업자명, H(8)=박스수, I(9)=총피킹금액, L(12)=표준시간hr, M(13)=실적시간hr,
+           N(14)=WMS근무시간hr (DPS는 수식 오류로 0 처리 → 호출 후 별도 overwrite).
        (모두 우리 계산값 = SUMIF 결과. 6/1 전구역 0% 검증완료.)"""
     ws = wb.Worksheets("피킹실적")
     out = []
@@ -1079,6 +1081,8 @@ def _read_picking_workers(wb, slots: dict, date_str: str) -> list:
         ii = ws.Range(ws.Cells(s, 9),  ws.Cells(e, 9)).Value  or []
         l  = ws.Range(ws.Cells(s, 12), ws.Cells(e, 12)).Value or []
         m  = ws.Range(ws.Cells(s, 13), ws.Cells(e, 13)).Value or []
+        # N(14): WMS 근무시간hr — DPS는 수식값 비신뢰, 호출 후 타임스탬프 기반으로 덮어씀
+        n  = ws.Range(ws.Cells(s, 14), ws.Cells(e, 14)).Value or []
         for i in range(e - s + 1):
             name = c[i][0] if i < len(c) and c[i] else None
             if name is None or str(name).strip() == "":
@@ -1089,12 +1093,15 @@ def _read_picking_workers(wb, slots: dict, date_str: str) -> list:
             if std == 0 and act == 0 and box == 0 and amt == 0:
                 continue
             shift = "야간" if "[야간]" in name else "주간"
+            # DPS는 N열 수식값 신뢰 불가 → 0으로 초기화, 호출 후 덮어씀
+            wms = _safe(n[i][0]) if zone != "DPS" and i < len(n) and n[i] else 0.0
             out.append({
                 "work_date": date_str, "center": center, "owner": owner,
                 "zone": zone, "worker_name": name, "shift": shift,
                 "std_time_hr": round(std, 6), "act_time_hr": round(act, 6),
                 "pick_amount": round(amt, 0) if amt else None,
                 "pick_box":    int(round(box)) if box else None,
+                "wms_time_hr": round(wms, 4) if wms > 0 else None,
             })
     return out
 
@@ -1680,6 +1687,25 @@ def process(target: date, from_master: bool = False) -> dict:
             for z, c in counts.items():
                 print(f"      {z}: {c}")
 
+    # DPS WMS: I_1 DPS행 첫 피킹 ~ 마지막 피킹 시간 범위 (종합실적 N열 수식 대체)
+    _dps_k_valid = []
+    for _k in sd_i1.loc[sd_i1["B"] == "DPS", "K"] if not sd_i1.empty else []:
+        try:
+            if _k is not None and pd.notna(_k):
+                _dps_k_valid.append(_k)
+        except Exception:
+            if _k is not None:
+                _dps_k_valid.append(_k)
+    dps_wms_hr = 0.0
+    if len(_dps_k_valid) >= 2:
+        try:
+            dps_wms_hr = round(
+                (max(_dps_k_valid) - min(_dps_k_valid)).total_seconds() / 3600, 4
+            )
+        except Exception:
+            dps_wms_hr = 0.0
+    print(f"  [DPS WMS] {dps_wms_hr:.4f}h (DPS {len(_dps_k_valid)}행 기반 타임스탬프 계산)")
+
     # 잔여 Excel 프로세스 종료 (마스터 파일 잠금 해제)
     r = subprocess.run(["taskkill", "/f", "/im", "EXCEL.EXE"], capture_output=True, check=False)
     if r.returncode == 0:
@@ -1986,16 +2012,35 @@ def process(target: date, from_master: bool = False) -> dict:
         # ── 결과 읽기
         r1 = _read_results(wb1.Worksheets("종합실적"), ZONE_ROWS_1)
         r2 = _read_results(wb2.Worksheets("종합실적"), ZONE_ROWS_2)
+        # DPS WMS: 종합실적 수식(피킹실적 N열 SUMIF) 신뢰 불가 → 타임스탬프 계산값으로 override
+        if "DPS" in r1:
+            r1["DPS"]["wms_time_hr"] = dps_wms_hr
 
         # ── 피킹실적 작업자별 + 구역별 추출 → JSON 저장 (DB 적재용, 우리 계산값)
         try:
             import json as _json
             workers = (_read_picking_workers(wb1, PICKING_SLOTS_1, str(target))
                        + _read_picking_workers(wb2, PICKING_SLOTS_2, str(target)))
+            # DPS 작업자 WMS: N열 수식 대신 타임스탬프 계산값으로 override
+            for _w in workers:
+                if _w.get("zone") == "DPS":
+                    _w["wms_time_hr"] = dps_wms_hr if dps_wms_hr > 0 else None
             wpath = BASE_DIR / f"data/temp/workers_{target}.json"
             with open(wpath, "w", encoding="utf-8") as _f:
                 _json.dump(workers, _f, ensure_ascii=False, indent=2)
             print(f"\n  [피킹실적 작업자별] {len(workers)}명 추출 → {wpath.name}")
+
+            # ── raw snapshot: 작업자별 원천값 그대로 보관 (검증·재계산용) ──
+            # workers_DATE.json과 동일 구조지만 "이 파일이 Excel 직출력 원본"임을 명시
+            # 향후 로직 변경 시 raw 기반 재산출 가능하도록 별도 보관
+            snap_path = BASE_DIR / f"data/temp/raw_workers_{target}.json"
+            with open(snap_path, "w", encoding="utf-8") as _f:
+                _json.dump(workers, _f, ensure_ascii=False, indent=2)
+            # wms 미보유 작업자 수 확인 (비정상 여부 빠른 점검)
+            _no_wms = sum(1 for w in workers if w.get("wms_time_hr") is None and w.get("zone") != "DPS")
+            _dps_wms_ok = any(w.get("wms_time_hr") for w in workers if w.get("zone") == "DPS")
+            print(f"  [raw snapshot] {snap_path.name}  "
+                  f"(비DPS WMS없음={_no_wms}명, DPS WMS={'OK' if _dps_wms_ok else 'NULL'})")
 
             # 구역별 (종합실적 = 우리 계산값)
             zone_rows = []
@@ -2004,12 +2049,14 @@ def process(target: date, from_master: bool = False) -> dict:
                 box = _safe(v.get("pick_count"));   amt = _safe(v.get("pick_amount"))
                 if std == 0 and act == 0 and box == 0 and amt == 0:
                     continue
+                _wms = _safe(v.get("wms_time_hr", 0.0))
                 zone_rows.append({
                     "work_date": str(target), "center": ZONE_CENTER.get(zone, ""),
                     "owner": ZONE_OWNER.get(zone, ""), "zone": zone,
                     "std_time_hr": round(std, 6), "act_time_hr": round(act, 6),
                     "pick_amount": round(amt, 0) if amt else None,
                     "pick_box":    int(round(box)) if box else None,
+                    "wms_time_hr": round(_wms, 4) if _wms > 0 else None,
                 })
             zpath = BASE_DIR / f"data/temp/zones_{target}.json"
             with open(zpath, "w", encoding="utf-8") as _f:

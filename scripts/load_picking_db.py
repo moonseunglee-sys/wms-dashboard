@@ -53,11 +53,11 @@ def load_workers(cur, date_str):
     cur.execute("DELETE FROM picking_worker_daily WHERE work_date = %s", (date_str,))
     rows = [(d["work_date"], d["center"], d["owner"], d["zone"], d["worker_name"],
              d.get("shift"), d["std_time_hr"], d["act_time_hr"],
-             d["pick_amount"], d["pick_box"]) for d in data]
+             d["pick_amount"], d["pick_box"], d.get("wms_time_hr")) for d in data]
     execute_values(cur, """
         INSERT INTO picking_worker_daily
             (work_date, center, owner, zone, worker_name, shift,
-             std_time_hr, act_time_hr, pick_amount, pick_box)
+             std_time_hr, act_time_hr, pick_amount, pick_box, wms_time_hr)
         VALUES %s
     """, rows)
     print(f"  [picking_worker_daily] {date_str}: {len(rows)}명 적재")
@@ -72,12 +72,13 @@ def load_zones(cur, date_str):
     data = json.loads(p.read_text(encoding="utf-8"))
     cur.execute("DELETE FROM picking_zone_daily WHERE work_date = %s", (date_str,))
     rows = [(d["work_date"], d["center"], d["owner"], d["zone"],
-             d["std_time_hr"], d["act_time_hr"], d["pick_amount"], d["pick_box"])
+             d["std_time_hr"], d["act_time_hr"], d["pick_amount"], d["pick_box"],
+             d.get("wms_time_hr"))
             for d in data]
     execute_values(cur, """
         INSERT INTO picking_zone_daily
             (work_date, center, owner, zone,
-             std_time_hr, act_time_hr, pick_amount, pick_box)
+             std_time_hr, act_time_hr, pick_amount, pick_box, wms_time_hr)
         VALUES %s
     """, rows)
     print(f"  [picking_zone_daily]   {date_str}: {len(rows)}구역 적재")
@@ -93,6 +94,9 @@ def main():
     conn = _conn()
     cur = conn.cursor()
     try:
+        # wms_time_hr 컬럼 없으면 추가 (최초 1회)
+        cur.execute("ALTER TABLE picking_zone_daily   ADD COLUMN IF NOT EXISTS wms_time_hr NUMERIC(10,4)")
+        cur.execute("ALTER TABLE picking_worker_daily ADD COLUMN IF NOT EXISTS wms_time_hr NUMERIC(10,4)")
         if args.wipe:
             wipe(cur)
         for d in args.date:

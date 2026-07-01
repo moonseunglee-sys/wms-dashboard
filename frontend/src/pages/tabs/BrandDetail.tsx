@@ -3,6 +3,7 @@ import {
   ResponsiveContainer, CartesianGrid, ComposedChart, Line,
 } from 'recharts'
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
@@ -154,7 +155,10 @@ function StatBadge({ label, value, color }: { label: string; value: string; colo
 /* ── 메인 컴포넌트 ── */
 export default function BrandDetail({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
-  const [selectedOwner, setSelectedOwner] = useState<string>(OWNERS[0])
+  const location = useLocation()
+  const [selectedOwner, setSelectedOwner] = useState<string>(
+    location.state?.owner ?? OWNERS[0]
+  )
 
   if (loading) {
     return (

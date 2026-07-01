@@ -1,7 +1,8 @@
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell,
+  ResponsiveContainer, CartesianGrid,
 } from 'recharts'
+import { useNavigate } from 'react-router-dom'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
@@ -81,6 +82,124 @@ function toTrendData(allRows: ZoneDaily[], gran: Granularity) {
     }))
 }
 
+/* ── SVG 도넛 차트 ── */
+interface DonutSegment { value: number; color: string; name: string }
+
+function SvgDonutChart({
+  data, size = 140, thickness = 15, line1, line2, onSegmentClick,
+}: {
+  data: DonutSegment[]
+  size?: number
+  thickness?: number
+  line1: string
+  line2: string
+  onSegmentClick?: (name: string) => void
+}) {
+  const r  = (size - thickness) / 2
+  const cx = size / 2
+  const cy = size / 2
+  const C  = 2 * Math.PI * r
+  const GAP = thickness + 3
+
+  const sum = data.reduce((s, d) => s + d.value, 0)
+
+  const arcs = (() => {
+    let cum = 0
+    return data.map(d => {
+      const frac   = sum > 0 ? d.value / sum : 0
+      const arcLen = Math.max(0.1, frac * C - GAP)
+      const start  = cum
+      cum += frac
+      return { ...d, arcLen, start }
+    })
+  })()
+
+  return (
+    <svg width={size} height={size} className="shrink-0">
+      {/* 배경 트랙 */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth={thickness} />
+      {/* 세그먼트 */}
+      {sum > 0 && arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx} cy={cy} r={r}
+          fill="none"
+          stroke={arc.color}
+          strokeWidth={thickness}
+          strokeLinecap="round"
+          strokeDasharray={`${arc.arcLen} ${C}`}
+          strokeDashoffset={C / 4 - arc.start * C}
+          className={onSegmentClick ? 'cursor-pointer transition-opacity hover:opacity-75' : ''}
+          onClick={() => onSegmentClick?.(arc.name)}
+        />
+      ))}
+      {/* 중앙 텍스트 */}
+      <text
+        x={cx} y={cy - 9}
+        textAnchor="middle" dominantBaseline="middle"
+        style={{ fontSize: 13, fontWeight: 700, fill: '#111827', fontFamily: 'inherit' }}
+      >
+        {line1}
+      </text>
+      <text
+        x={cx} y={cy + 9}
+        textAnchor="middle" dominantBaseline="middle"
+        style={{ fontSize: 10, fill: '#9ca3af', fontFamily: 'inherit' }}
+      >
+        {line2}
+      </text>
+    </svg>
+  )
+}
+
+/* ── 도넛 카드 ── */
+function DonutCard({
+  title, data, line1, line2, onSegmentClick, onRowClick,
+}: {
+  title: string
+  data: DonutSegment[]
+  line1: string
+  line2: string
+  onSegmentClick?: (name: string) => void
+  onRowClick?: (name: string) => void
+}) {
+  const sum = data.reduce((s, d) => s + d.value, 0)
+  return (
+    <Card>
+      <CardHeader className="px-5 py-3.5 border-b border-border">
+        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">
+        <div className="flex items-center gap-6">
+          <SvgDonutChart
+            data={data}
+            line1={line1}
+            line2={line2}
+            onSegmentClick={onSegmentClick}
+          />
+          <div className="flex-1 space-y-2.5">
+            {data.map(d => {
+              const pct = sum > 0 ? ((d.value / sum) * 100).toFixed(1) : '0.0'
+              return (
+                <div
+                  key={d.name}
+                  className={`flex items-center gap-2 rounded px-1.5 py-1 -mx-1.5 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100' : ''}`}
+                  onClick={() => onRowClick?.(d.name)}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                  <span className="text-xs text-gray-600 flex-1">{d.name}</span>
+                  <span className="text-xs font-bold text-gray-800">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ── KPI 카드 ── */
 function KpiCard({ label, value, sub, color }: {
   label: string; value: string; sub?: string; color?: string
 }) {
@@ -96,70 +215,18 @@ function KpiCard({ label, value, sub, color }: {
   )
 }
 
-/* ── 도넛 비중 카드 ── */
-function DonutCard({ title, data, colors, total, totalLabel }: {
-  title: string
-  data: { name: string; value: number }[]
-  colors: string[]
-  total: string
-  totalLabel: string
-}) {
-  const sum = data.reduce((s, d) => s + d.value, 0)
-  return (
-    <Card>
-      <CardHeader className="px-5 py-3.5 border-b border-border">
-        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-6">
-          <div className="relative shrink-0">
-            <PieChart width={130} height={130}>
-              <Pie
-                data={data}
-                cx={65} cy={65}
-                innerRadius={42} outerRadius={60}
-                paddingAngle={2}
-                dataKey="value"
-                startAngle={90} endAngle={-270}
-              >
-                {data.map((_, i) => (
-                  <Cell key={i} fill={colors[i % colors.length]} strokeWidth={0} />
-                ))}
-              </Pie>
-            </PieChart>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <p className="text-sm font-bold text-gray-800 leading-tight">{total}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{totalLabel}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 space-y-2">
-            {data.map((d, i) => {
-              const pct = sum > 0 ? ((d.value / sum) * 100).toFixed(1) : '0.0'
-              return (
-                <div key={d.name} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: colors[i] }} />
-                  <span className="text-xs text-gray-600 flex-1 truncate">{d.name}</span>
-                  <span className="text-xs font-bold text-gray-700">{pct}%</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function CenterCard({ center, kpi, metric }: {
-  center: string; kpi: KpiResult; metric: Metric
+/* ── 센터 요약 카드 ── */
+function CenterCard({ center, kpi, metric, onClick }: {
+  center: string; kpi: KpiResult; metric: Metric; onClick?: () => void
 }) {
   const color = CENTER_COLOR[center]
   const owners = CENTER_OWNERS[center]
   const isAmt = metric === 'amount'
   return (
-    <Card>
+    <Card
+      className={onClick ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}
+      onClick={onClick}
+    >
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -191,19 +258,28 @@ function CenterCard({ center, kpi, metric }: {
           <span>·</span>
           <span>구역 {kpi.zones}개</span>
         </div>
+        {onClick && (
+          <p className="mt-3 text-[11px] text-gray-300 hover:text-letusBlue transition-colors flex items-center gap-1">
+            센터 상세 보기 ›
+          </p>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function OwnerCard({ owner, kpi, metric }: {
-  owner: string; kpi: KpiResult; metric: Metric
+/* ── 브랜드 요약 카드 ── */
+function OwnerCard({ owner, kpi, metric, onClick }: {
+  owner: string; kpi: KpiResult; metric: Metric; onClick?: () => void
 }) {
   const color = OWNER_COLOR[owner]
   const isAmt = metric === 'amount'
   const center = CENTER_OWNER[owner]
   return (
-    <Card>
+    <Card
+      className={onClick ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}
+      onClick={onClick}
+    >
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -232,13 +308,20 @@ function OwnerCard({ owner, kpi, metric }: {
             <span className="font-medium text-gray-700">{kpi.std.toFixed(0)}h / {kpi.act.toFixed(0)}h</span>
           </div>
         </div>
+        {onClick && (
+          <p className="mt-3 text-[11px] text-gray-300 hover:text-letusBlue transition-colors flex items-center gap-1">
+            브랜드 상세 보기 ›
+          </p>
+        )}
       </CardContent>
     </Card>
   )
 }
 
+/* ── 메인 ── */
 export default function Overview({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
+  const navigate = useNavigate()
 
   if (loading) {
     return (
@@ -268,16 +351,24 @@ export default function Overview({ period, metric, granularity }: Props) {
   const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
   /* 도넛 데이터 */
-  const brandDonutData = OWNERS.map(o => ({
+  const brandDonut: DonutSegment[] = OWNERS.map(o => ({
     name: o,
     value: isAmt ? ownerKpi[o].amount : ownerKpi[o].box,
+    color: OWNER_COLOR[o],
   }))
-  const centerDonutData = CENTERS.map(c => ({
+  const centerDonut: DonutSegment[] = CENTERS.map(c => ({
     name: c,
     value: isAmt ? centerKpi[c].amount : centerKpi[c].box,
+    color: CENTER_COLOR[c],
   }))
 
-  const donutTotal = isAmt ? fmtM(total.amount) : fmtBox(total.box)
+  const donutLine1 = isAmt ? fmtNum(Math.round(total.amount)) : fmtNum(total.box)
+  const donutLine2 = isAmt ? '백만원' : '박스'
+
+  const goToBrand = (owner: string) =>
+    navigate('/picking/brand', { state: { owner } })
+  const goToCenter = () =>
+    navigate('/picking/center')
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -313,17 +404,19 @@ export default function Overview({ period, metric, granularity }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <DonutCard
           title="브랜드별 피킹 비중"
-          data={brandDonutData}
-          colors={OWNERS.map(o => OWNER_COLOR[o])}
-          total={donutTotal}
-          totalLabel="합계"
+          data={brandDonut}
+          line1={donutLine1}
+          line2={donutLine2}
+          onSegmentClick={goToBrand}
+          onRowClick={goToBrand}
         />
         <DonutCard
           title="센터별 피킹 비중"
-          data={centerDonutData}
-          colors={CENTERS.map(c => CENTER_COLOR[c])}
-          total={donutTotal}
-          totalLabel="합계"
+          data={centerDonut}
+          line1={donutLine1}
+          line2={donutLine2}
+          onSegmentClick={goToCenter}
+          onRowClick={goToCenter}
         />
       </div>
 
@@ -332,7 +425,10 @@ export default function Overview({ period, metric, granularity }: Props) {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">센터별 현황</p>
         <div className="grid grid-cols-3 gap-4">
           {CENTERS.map(c => (
-            <CenterCard key={c} center={c} kpi={centerKpi[c]} metric={metric} />
+            <CenterCard
+              key={c} center={c} kpi={centerKpi[c]} metric={metric}
+              onClick={goToCenter}
+            />
           ))}
         </div>
       </div>
@@ -342,7 +438,10 @@ export default function Overview({ period, metric, granularity }: Props) {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">브랜드별 현황</p>
         <div className="grid grid-cols-4 gap-4">
           {OWNERS.map(o => (
-            <OwnerCard key={o} owner={o} kpi={ownerKpi[o]} metric={metric} />
+            <OwnerCard
+              key={o} owner={o} kpi={ownerKpi[o]} metric={metric}
+              onClick={() => goToBrand(o)}
+            />
           ))}
         </div>
       </div>

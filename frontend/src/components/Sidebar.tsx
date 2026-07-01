@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 
 /* ── 아이콘 ──────────────────────────────────────────── */
 const IcoSearch = () => (
@@ -120,8 +120,21 @@ function activeGroupKey(pathname: string): string | null {
 }
 
 /* ── 컴포넌트 ─────────────────────────────────────────── */
+/* ── 즐겨찾기 리프 목록 (로컬스토리지 기반) ── */
+const FAV_KEY = 'letus_favs'
+function loadFavs(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(FAV_KEY) ?? '[]')) }
+  catch { return new Set() }
+}
+function saveFavs(s: Set<string>) {
+  localStorage.setItem(FAV_KEY, JSON.stringify([...s]))
+}
+const ALL_LEAVES: Leaf[] = MENU.flatMap(cat => cat.items.flatMap(g => g.children))
+
 export default function Sidebar() {
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<'all' | 'fav'>('all')
+  const [favs, setFavs] = useState<Set<string>>(loadFavs)
   const { pathname } = useLocation()
 
   const initKey = activeGroupKey(pathname)
@@ -142,124 +155,204 @@ export default function Sidebar() {
       return next
     })
 
+  const toggleFav = (to: string) =>
+    setFavs(prev => {
+      const next = new Set(prev)
+      if (next.has(to)) next.delete(to)
+      else next.add(to)
+      saveFavs(next)
+      return next
+    })
+
+  const favLeaves = ALL_LEAVES.filter(l => favs.has(l.to))
+
   return (
     <aside className="w-[248px] min-w-[248px] bg-letusSidebar min-h-screen flex flex-col shrink-0">
 
-      {/* 로고 */}
-      <div className="px-5 py-[18px] border-b border-white/8">
+      {/* 로고 — 클릭 시 홈으로 */}
+      <Link to="/" className="px-5 py-[18px] border-b border-white/8 block hover:bg-white/4 transition-colors">
         <p className="text-[15px] font-extrabold tracking-[0.10em]">
           <span className="text-white">LETUS </span>
           <span className="text-letusOrange">LOGIS</span>
         </p>
         <p className="text-[10px] text-slate-500 mt-0.5 tracking-wide">WMS 생산성 관리</p>
-      </div>
+      </Link>
 
-      {/* 메뉴 검색 */}
-      <div className="px-3 py-2.5 border-b border-white/5">
-        <div className="flex items-center gap-2 bg-white/6 rounded-md px-3 py-2">
-          <span className="text-slate-500"><IcoSearch /></span>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="메뉴 검색..."
-            className="flex-1 bg-transparent text-[12px] text-slate-300 placeholder-slate-600 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* 즐겨찾기 탭 */}
+      {/* 탭: 전체메뉴 · 즐겨찾기 */}
       <div className="flex border-b border-white/5 text-[11px]">
-        <button className="flex-1 flex items-center justify-center gap-1.5 py-2 text-letusOrange border-b-2 border-letusOrange font-semibold">
+        <button
+          onClick={() => setTab('all')}
+          className={[
+            'flex-1 flex items-center justify-center py-2.5 font-semibold transition-colors',
+            tab === 'all'
+              ? 'text-white border-b-2 border-letusOrange'
+              : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent',
+          ].join(' ')}
+        >
+          전체메뉴
+        </button>
+        <button
+          onClick={() => setTab('fav')}
+          className={[
+            'flex-1 flex items-center justify-center gap-1.5 py-2.5 font-semibold transition-colors',
+            tab === 'fav'
+              ? 'text-letusOrange border-b-2 border-letusOrange'
+              : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent',
+          ].join(' ')}
+        >
           <IcoStar />
           즐겨찾기
         </button>
-        <button className="flex-1 flex items-center justify-center py-2 text-slate-500 hover:text-slate-300 transition-colors">
-          전체메뉴
-        </button>
       </div>
 
-      {/* 네비게이션 */}
-      <nav className="flex-1 overflow-y-auto py-1.5">
-        {MENU.map(cat => {
-          const visibleItems = cat.items.filter(item => {
-            if (!search) return true
-            if (item.label.toLowerCase().includes(search.toLowerCase())) return true
-            return item.children.some(c => c.label.toLowerCase().includes(search.toLowerCase()))
-          })
-          if (visibleItems.length === 0) return null
+      {/* 메뉴 검색 (전체메뉴 탭에서만) */}
+      {tab === 'all' && (
+        <div className="px-3 py-2 border-b border-white/5">
+          <div className="flex items-center gap-2 bg-white/6 rounded-md px-3 py-1.5">
+            <span className="text-slate-500"><IcoSearch /></span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="메뉴 검색..."
+              className="flex-1 bg-transparent text-[12px] text-slate-300 placeholder-slate-600 outline-none"
+            />
+          </div>
+        </div>
+      )}
 
-          return (
-            <div key={cat.label} className="mb-0.5">
-              {/* 카테고리 헤더 */}
-              <div className="px-4 pt-3 pb-1">
-                <p className="text-[9.5px] text-slate-600 font-bold tracking-[0.14em] uppercase select-none">
-                  {cat.label}
-                </p>
+      {/* ── 전체메뉴 ── */}
+      {tab === 'all' && (
+        <nav className="flex-1 overflow-y-auto py-1.5">
+          {MENU.map(cat => {
+            const visibleItems = cat.items.filter(item => {
+              if (!search) return true
+              if (item.label.toLowerCase().includes(search.toLowerCase())) return true
+              return item.children.some(c => c.label.toLowerCase().includes(search.toLowerCase()))
+            })
+            if (visibleItems.length === 0) return null
+
+            return (
+              <div key={cat.label} className="mb-0.5">
+                <div className="px-4 pt-3 pb-1">
+                  <p className="text-[9.5px] text-slate-600 font-bold tracking-[0.14em] uppercase select-none">
+                    {cat.label}
+                  </p>
+                </div>
+
+                {visibleItems.map(item => {
+                  const key = `${cat.label}::${item.label}`
+                  const isOpen = openGroups.has(key)
+                  const hasChildren = item.children.length > 0
+
+                  return (
+                    <div key={item.label}>
+                      {item.comingSoon && item.to ? (
+                        <NavLink
+                          to={item.to}
+                          className={({ isActive }) => [
+                            'flex items-center gap-2.5 mx-2 px-3 py-2 rounded-md text-[12.5px] transition-all',
+                            isActive ? 'bg-white/8 text-slate-300' : 'text-slate-600 hover:text-slate-400',
+                          ].join(' ')}
+                        >
+                          <span className="opacity-60 shrink-0"><item.Icon /></span>
+                          <span className="flex-1 text-left">{item.label}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/80 text-slate-500 font-medium shrink-0">예정</span>
+                        </NavLink>
+                      ) : (
+                        <button
+                          onClick={() => toggle(key)}
+                          className="w-full flex items-center gap-2.5 mx-2 px-3 py-2.5 rounded-md text-[14px] font-medium text-slate-300 hover:text-white hover:bg-white/6 transition-all duration-150"
+                          style={{ width: 'calc(100% - 1rem)' }}
+                        >
+                          <span className="opacity-70 shrink-0"><item.Icon /></span>
+                          <span className="flex-1 text-left">{item.label}</span>
+                          {hasChildren && <IcoChevron open={isOpen} />}
+                        </button>
+                      )}
+
+                      {hasChildren && isOpen && (
+                        <div className="mb-0.5">
+                          {item.children
+                            .filter(c => !search || c.label.toLowerCase().includes(search.toLowerCase()))
+                            .map(child => (
+                              <div key={child.to} className="flex items-center group mx-2">
+                                <NavLink
+                                  to={child.to}
+                                  className={({ isActive }) => [
+                                    'flex-1 flex items-center gap-2.5 pl-[42px] pr-2 py-2 rounded-l-md text-[13.5px] transition-all duration-150',
+                                    isActive
+                                      ? 'bg-letusBlue text-white font-semibold'
+                                      : 'text-slate-400 hover:text-white hover:bg-white/5',
+                                  ].join(' ')}
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-current opacity-50 shrink-0" />
+                                  {child.label}
+                                </NavLink>
+                                <button
+                                  onClick={() => toggleFav(child.to)}
+                                  title={favs.has(child.to) ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                                  className={[
+                                    'pr-2 pl-1 py-2 rounded-r-md transition-colors',
+                                    favs.has(child.to)
+                                      ? 'text-letusOrange'
+                                      : 'text-slate-700 opacity-0 group-hover:opacity-100 hover:text-slate-400',
+                                  ].join(' ')}
+                                >
+                                  <IcoStar />
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
+            )
+          })}
+        </nav>
+      )}
 
-              {visibleItems.map(item => {
-                const key = `${cat.label}::${item.label}`
-                const isOpen = openGroups.has(key)
-                const hasChildren = item.children.length > 0
-
-                return (
-                  <div key={item.label}>
-                    {/* 그룹 행 */}
-                    {item.comingSoon && item.to ? (
-                      /* 구현예정 — NavLink로 이동 가능하되 흐리게 */
-                      <NavLink
-                        to={item.to}
-                        className={({ isActive }) => [
-                          'flex items-center gap-2.5 mx-2 px-3 py-2 rounded-md text-[12.5px] transition-all',
-                          isActive ? 'bg-white/8 text-slate-300' : 'text-slate-600 hover:text-slate-400',
-                        ].join(' ')}
-                      >
-                        <span className="opacity-60 shrink-0"><item.Icon /></span>
-                        <span className="flex-1 text-left">{item.label}</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/80 text-slate-500 font-medium shrink-0">예정</span>
-                      </NavLink>
-                    ) : (
-                      /* 일반 그룹 — 클릭 시 펼침/접힘 */
-                      <button
-                        onClick={() => toggle(key)}
-                        className="w-full flex items-center gap-2.5 mx-2 px-3 py-2.5 rounded-md text-[14px] font-medium text-slate-300 hover:text-white hover:bg-white/6 transition-all duration-150"
-                        style={{ width: 'calc(100% - 1rem)' }}
-                      >
-                        <span className="opacity-70 shrink-0"><item.Icon /></span>
-                        <span className="flex-1 text-left">{item.label}</span>
-                        {hasChildren && <IcoChevron open={isOpen} />}
-                      </button>
-                    )}
-
-                    {/* 리프 아이템 */}
-                    {hasChildren && isOpen && (
-                      <div className="mb-0.5">
-                        {item.children
-                          .filter(c => !search || c.label.toLowerCase().includes(search.toLowerCase()))
-                          .map(child => (
-                            <NavLink
-                              key={child.to}
-                              to={child.to}
-                              className={({ isActive }) => [
-                                'flex items-center gap-2.5 pl-[42px] pr-3 py-2 mx-2 rounded-md text-[13.5px] transition-all duration-150',
-                                isActive
-                                  ? 'bg-letusBlue text-white font-semibold'
-                                  : 'text-slate-400 hover:text-white hover:bg-white/5',
-                              ].join(' ')}
-                            >
-                              <span className="w-1 h-1 rounded-full bg-current opacity-50 shrink-0" />
-                              {child.label}
-                            </NavLink>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+      {/* ── 즐겨찾기 ── */}
+      {tab === 'fav' && (
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {favLeaves.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 mt-10 text-slate-600">
+              <IcoStar />
+              <p className="text-[11px] text-center leading-relaxed">
+                자주 쓰는 메뉴 옆<br />별표를 눌러 추가하세요
+              </p>
             </div>
-          )
-        })}
-      </nav>
+          ) : (
+            <>
+              <p className="text-[9.5px] text-slate-600 font-bold tracking-[0.14em] uppercase px-2 pb-2">즐겨찾기</p>
+              {favLeaves.map(leaf => (
+                <div key={leaf.to} className="flex items-center group">
+                  <NavLink
+                    to={leaf.to}
+                    className={({ isActive }) => [
+                      'flex-1 flex items-center gap-2.5 px-3 py-2 rounded-l-md text-[13px] transition-all duration-150',
+                      isActive
+                        ? 'bg-letusBlue text-white font-semibold'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5',
+                    ].join(' ')}
+                  >
+                    <span className="text-letusOrange shrink-0"><IcoStar /></span>
+                    {leaf.label}
+                  </NavLink>
+                  <button
+                    onClick={() => toggleFav(leaf.to)}
+                    title="즐겨찾기 해제"
+                    className="pr-2 pl-1 py-2 rounded-r-md text-slate-700 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+        </nav>
+      )}
 
       {/* 사용자 */}
       <div className="border-t border-white/8 px-3 py-3">

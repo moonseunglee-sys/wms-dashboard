@@ -7,12 +7,14 @@ import ProductivityPage from './pages/picking/ProductivityPage'
 import WorkerPage from './pages/picking/WorkerPage'
 import CenterPage from './pages/picking/CenterPage'
 import ComingSoon from './pages/ComingSoon'
+import Home from './pages/Home'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
           <Route path="/picking" element={<PickingLayout />}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview"     element={<OverviewPage />} />
@@ -25,7 +27,7 @@ export default function App() {
           <Route path="/cbm"                 element={<ComingSoon title="CBM관리" />} />
           <Route path="/equipment/terminal"  element={<ComingSoon title="단말기 관리" />} />
         </Route>
-        <Route path="*" element={<Navigate to="/picking/overview" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

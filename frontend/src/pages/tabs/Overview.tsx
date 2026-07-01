@@ -366,8 +366,8 @@ export default function Overview({ period, metric, granularity }: Props) {
 
   const goToBrand = (owner: string) =>
     navigate('/picking/brand', { state: { owner } })
-  const goToCenter = () =>
-    navigate('/picking/center')
+  const goToCenter = (center?: string) =>
+    navigate('/picking/center', { state: { center } })
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -426,7 +426,7 @@ export default function Overview({ period, metric, granularity }: Props) {
           {CENTERS.map(c => (
             <CenterCard
               key={c} center={c} kpi={centerKpi[c]} metric={metric}
-              onClick={goToCenter}
+              onClick={() => goToCenter(c)}
             />
           ))}
         </div>

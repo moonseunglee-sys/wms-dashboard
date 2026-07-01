@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, CartesianGrid, ComposedChart, Line,
 } from 'recharts'
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
@@ -89,7 +89,7 @@ const ZONE_COLORS = [
   '#6366F1','#14B8A6',
 ]
 
-function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
+function ZoneTable({ zones, metric, onSelect }: { zones: ZoneRow[]; metric: Metric; onSelect?: (zone: string) => void }) {
   const isAmt = metric === 'amount'
   return (
     <div className="overflow-x-auto">
@@ -106,7 +106,9 @@ function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
         </thead>
         <tbody>
           {zones.map((z, i) => (
-            <tr key={z.zone} className={i % 2 === 0 ? 'bg-gray-50/50' : ''}>
+            <tr key={z.zone}
+              className={[i % 2 === 0 ? 'bg-gray-50/50' : '', onSelect ? 'cursor-pointer hover:bg-blue-50/40 transition-colors' : ''].join(' ')}
+              onClick={() => onSelect?.(z.zone)}>
               <td className="py-2 px-3 font-medium text-gray-700">{z.zone}</td>
               <td className="py-2 px-3 text-right">
                 <span className={[
@@ -156,6 +158,7 @@ function StatBadge({ label, value, color }: { label: string; value: string; colo
 export default function BrandDetail({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
   const location = useLocation()
+  const navigate = useNavigate()
   const [selectedOwner, setSelectedOwner] = useState<string>(
     location.state?.owner ?? OWNERS[0]
   )
@@ -254,7 +257,8 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
           {zoneAggs.length === 0 ? (
             <p className="text-xs text-gray-300 text-center py-8">데이터 없음</p>
           ) : (
-            <ZoneTable zones={zoneAggs} metric={metric} />
+            <ZoneTable zones={zoneAggs} metric={metric}
+              onSelect={z => navigate('/picking/worker', { state: { owner: selectedOwner, zone: z } })} />
           )}
         </SectionCard>
 

@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import {
   ComposedChart, Bar, Line, BarChart,
   XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell,
 } from 'recharts'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
@@ -52,7 +54,12 @@ function SectionCard({ title, subtitle, children }: {
 }
 
 export default function CenterPage({ period, metric, granularity }: Props) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const { rows, loading } = useAllZoneData()
+  const [selectedCenter, setSelectedCenter] = useState<string | null>(
+    (location.state as { center?: string } | null)?.center ?? null
+  )
 
   if (loading) {
     return (
@@ -131,13 +138,118 @@ export default function CenterPage({ period, metric, granularity }: Props) {
 
   const tooltipFmt = (v: number) => isAmt ? fmtM(v) : fmtBox(v)
 
+  /* ── 선택 센터 브랜드 KPI ── */
+  const selOwners = selectedCenter ? CENTER_OWNERS[selectedCenter] : []
+  const brandKpis = selOwners.map(owner => {
+    const oRows = pRows.filter(r => r.owner === owner)
+    let std = 0, act = 0, val = 0
+    const zones = new Set<string>()
+    for (const r of oRows) {
+      std += r.std_time_hr; act += r.act_time_hr
+      val += metricVal(r, metric) / scale; zones.add(r.zone)
+    }
+    return { owner, val: +val.toFixed(2), eff: act > 0 ? (std / act) * 100 : 0, std, act, zones: zones.size }
+  })
+  const selTrendMap = new Map<string, Record<string, number>>()
+  for (const r of chartRows.filter(r => selOwners.includes(r.owner))) {
+    const bucket = dateToBucket(r.work_date, granularity)
+    if (!selTrendMap.has(bucket)) selTrendMap.set(bucket, {})
+    const e = selTrendMap.get(bucket)!
+    e[r.owner] = (e[r.owner] ?? 0) + metricVal(r, metric) / scale
+  }
+  const selTrendData = [...selTrendMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([bucket, e]) => ({
+      label: bucketLabel(bucket, granularity),
+      ...Object.fromEntries(selOwners.map(o => [o, +(e[o] ?? 0).toFixed(2)])),
+    }))
+
+  if (selectedCenter) {
+    return (
+      <div className="space-y-5 animate-fade-in">
+
+        {/* 브레드크럼 */}
+        <div className="flex items-center gap-1 text-xs">
+          <button onClick={() => setSelectedCenter(null)}
+            className="text-gray-400 hover:text-gray-700 px-2 py-0.5 rounded hover:bg-gray-100 transition-colors">
+            전체 센터
+          </button>
+          <span className="text-gray-300">›</span>
+          <span className="px-2 py-0.5 rounded font-semibold bg-blue-50"
+            style={{ color: CENTER_COLOR[selectedCenter] }}>
+            {selectedCenter}
+          </span>
+        </div>
+
+        {/* 브랜드 KPI 카드 */}
+        <div className={`grid gap-4 ${selOwners.length === 1 ? 'grid-cols-1 max-w-sm' : 'grid-cols-2'}`}>
+          {brandKpis.map(b => (
+            <Card key={b.owner}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/picking/brand', { state: { owner: b.owner } })}>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ background: OWNER_COLOR[b.owner] }} />
+                    <span className="text-sm font-bold text-gray-700">{b.owner}</span>
+                  </div>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${effBadge(b.eff)}`}>
+                    {fmtPct(b.eff)}
+                  </span>
+                </div>
+                <p className="text-2xl font-bold mb-3" style={{ color: OWNER_COLOR[b.owner] }}>
+                  {isAmt ? fmtM(b.val) : fmtBox(b.val)}
+                </p>
+                <div className="flex gap-3 text-xs text-gray-400">
+                  <span>표준 {b.std.toFixed(0)}h</span>
+                  <span>/</span>
+                  <span>실적 {b.act.toFixed(0)}h</span>
+                  <span>·</span>
+                  <span>구역 {b.zones}개</span>
+                </div>
+                <p className="mt-3 text-[11px] text-gray-300 flex items-center gap-1">
+                  브랜드 상세 보기 ›
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* 브랜드별 추이 */}
+        {selTrendData.length > 0 && (
+          <SectionCard title={`${selectedCenter} 브랜드별 ${granLabel} 추이 (${unit})`}>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={selTrendData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#6b7280' }}
+                  tickFormatter={v => isAmt ? `${v}백만` : fmtNum(v)} />
+                <Tooltip content={(props: any) => (
+                  <ChartTooltip active={props.active} payload={props.payload}
+                    label={props.label} formatter={tooltipFmt} />
+                )} />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                {selOwners.map((o, i) => (
+                  <Bar key={o} dataKey={o} stackId="a" fill={OWNER_COLOR[o]}
+                    radius={i === selOwners.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </SectionCard>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5 animate-fade-in">
 
       {/* 센터 KPI 카드 3개 */}
       <div className="grid grid-cols-3 gap-4">
         {centerKpi.map(c => (
-          <Card key={c.center}>
+          <Card key={c.center}
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setSelectedCenter(c.center)}>
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -161,6 +273,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
                 <span>/</span>
                 <span>실적 {c.act.toFixed(0)}h</span>
               </div>
+              <p className="mt-3 text-[11px] text-gray-300">브랜드 상세 보기 ›</p>
             </CardContent>
           </Card>
         ))}

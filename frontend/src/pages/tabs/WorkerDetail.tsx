@@ -2,6 +2,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine,
 } from 'recharts'
+import { useLocation } from 'react-router-dom'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
 import { useWorkerStats } from '../../hooks/useWorkerStats'
 import { useHierarchy } from '../../hooks/useHierarchy'
@@ -308,8 +309,16 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
 
 /* ── 메인 컴포넌트 ──────────────────────────────────── */
 export default function WorkerDetail({ period, metric }: Props) {
+  const location = useLocation()
   const { rows, loading: zoneLoading } = useAllZoneData()
-  const { filter, depth, breadcrumb, selectOwner, selectZone, selectWorker } = useHierarchy()
+  const initFilter = (() => {
+    const s = location.state as { owner?: string; zone?: string } | null
+    if (!s) return {}
+    if (s.zone && s.owner) return { owner: s.owner, zone: s.zone }
+    if (s.owner) return { owner: s.owner }
+    return {}
+  })()
+  const { filter, depth, breadcrumb, selectOwner, selectZone, selectWorker } = useHierarchy(initFilter)
 
   /* depth 2-3 용: worker stats 훅 */
   const { workerAggs, dailyPoints, loading: workerLoading } = useWorkerStats(period, {

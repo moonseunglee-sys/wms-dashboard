@@ -8,8 +8,8 @@ import type { HierarchyFilter } from '../lib/types'
  *    zone 선택   → worker 초기화
  *    worker 선택 → 그대로 (말단)
  */
-export function useHierarchy() {
-  const [filter, setFilter] = useState<HierarchyFilter>({})
+export function useHierarchy(initialFilter: HierarchyFilter = {}) {
+  const [filter, setFilter] = useState<HierarchyFilter>(initialFilter)
 
   function selectOwner(owner: string | undefined) {
     setFilter({ owner })

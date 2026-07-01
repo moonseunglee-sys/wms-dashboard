@@ -75,10 +75,10 @@ const MENU: Category[] = [
         kind: 'group', label: '피킹생산성', Icon: IcoPicking,
         children: [
           { kind: 'leaf', label: '종합현황',      to: '/picking/overview' },
-          { kind: 'leaf', label: '브랜드별',       to: '/picking/brand' },
-          { kind: 'leaf', label: '생산성',         to: '/picking/productivity' },
-          { kind: 'leaf', label: '작업자별 상세',  to: '/picking/worker' },
           { kind: 'leaf', label: '센터별 분석',    to: '/picking/center' },
+          { kind: 'leaf', label: '브랜드별 분석',  to: '/picking/brand' },
+          { kind: 'leaf', label: '생산성 집계',    to: '/picking/productivity' },
+          { kind: 'leaf', label: '작업자별 상세',  to: '/picking/worker' },
         ],
       },
       {

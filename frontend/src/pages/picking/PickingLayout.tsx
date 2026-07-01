@@ -19,10 +19,10 @@ const PERIOD_OPTS: { label: string; make: () => Period }[] = [
 
 const PAGE_LABELS: Record<string, string> = {
   '/picking/overview':     '종합현황',
-  '/picking/brand':        '브랜드별 상세',
-  '/picking/productivity': '생산성 분석',
-  '/picking/worker':       '작업자별 상세',
   '/picking/center':       '센터별 분석',
+  '/picking/brand':        '브랜드별 분석',
+  '/picking/productivity': '생산성 집계',
+  '/picking/worker':       '작업자별 상세',
 }
 
 export default function PickingLayout() {

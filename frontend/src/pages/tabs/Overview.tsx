@@ -23,7 +23,7 @@ function metricVal(r: ZoneDaily, metric: Metric) {
   return metric === 'amount' ? (r.pick_amount ?? 0) : (r.pick_box ?? 0)
 }
 function metricScale(metric: Metric) { return metric === 'amount' ? 1_000_000 : 1 }
-function metricUnit(metric: Metric)  { return metric === 'amount' ? 'M₩' : '박스' }
+function metricUnit(metric: Metric)  { return metric === 'amount' ? 'M' : '박스' }
 
 /* ── KPI 집계 ────────────────────────────────────────────────── */
 function computeKpi(rows: ZoneDaily[], metric: Metric) {
@@ -96,9 +96,9 @@ function StatCard({ label, value, sub, color }: {
   return (
     <Card>
       <CardContent className="p-5">
-        <p className="text-[12px] text-muted-foreground font-medium mb-3">{label}</p>
-        <p className="text-[26px] font-bold leading-none" style={{ color: color ?? 'hsl(var(--foreground))' }}>{value}</p>
-        {sub && <p className="text-[11.5px] text-muted-foreground mt-2">{sub}</p>}
+        <p className="text-xs text-muted-foreground font-medium mb-3">{label}</p>
+        <p className="text-2xl font-bold leading-none" style={{ color: color ?? 'hsl(var(--foreground))' }}>{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-2">{sub}</p>}
       </CardContent>
     </Card>
   )
@@ -107,8 +107,8 @@ function StatCard({ label, value, sub, color }: {
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
-      <CardHeader className="px-5 py-4 border-b border-border">
-        <CardTitle className="text-[13px] font-bold">{title}</CardTitle>
+      <CardHeader className="px-5 py-3.5 border-b border-border">
+        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-5">{children}</CardContent>
     </Card>
@@ -216,7 +216,7 @@ export default function Overview({ period, metric }: Props) {
       <div className="grid grid-cols-4 gap-4">
         <StatCard
           label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
-          value={isAmt ? `${fmtM(kpi.primary)}₩` : fmtNum(kpi.primary)}
+          value={isAmt ? fmtM(kpi.primary) : fmtNum(kpi.primary)}
           sub={isAmt ? `${fmtNum(Math.round(kpi.primary * 100))}만원` : undefined}
           color="#FF6B35"
         />
@@ -258,8 +258,8 @@ export default function Overview({ period, metric }: Props) {
               <Tooltip
                 formatter={(v: number, name: string) =>
                   name === 'total'
-                    ? [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, '합계']
-                    : [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, name]
+                    ? [isAmt ? fmtM(v) : fmtNum(v), '합계']
+                    : [isAmt ? fmtM(v) : fmtNum(v), name]
                 }
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
               />
@@ -307,7 +307,7 @@ export default function Overview({ period, metric }: Props) {
                 />
                 <Tooltip
                   formatter={(v: number, name: string) => [
-                    `${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, name
+                    isAmt ? fmtM(v) : fmtNum(v), name
                   ]}
                   contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                 />

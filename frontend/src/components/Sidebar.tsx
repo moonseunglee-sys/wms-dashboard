@@ -142,7 +142,7 @@ export default function Sidebar() {
     })
 
   return (
-    <aside className="w-[220px] min-w-[220px] bg-letusSidebar min-h-screen flex flex-col shrink-0">
+    <aside className="w-[248px] min-w-[248px] bg-letusSidebar min-h-screen flex flex-col shrink-0">
 
       {/* 로고 */}
       <div className="px-5 py-[18px] border-b border-white/8">
@@ -221,7 +221,7 @@ export default function Sidebar() {
                       /* 일반 그룹 — 클릭 시 펼침/접힘 */
                       <button
                         onClick={() => toggle(key)}
-                        className="w-full flex items-center gap-2.5 mx-2 px-3 py-2 rounded-md text-[12.5px] text-slate-400 hover:text-white hover:bg-white/6 transition-all duration-150"
+                        className="w-full flex items-center gap-2.5 mx-2 px-3 py-2.5 rounded-md text-[14px] font-medium text-slate-300 hover:text-white hover:bg-white/6 transition-all duration-150"
                         style={{ width: 'calc(100% - 1rem)' }}
                       >
                         <span className="opacity-70 shrink-0"><item.Icon /></span>
@@ -240,10 +240,10 @@ export default function Sidebar() {
                               key={child.to}
                               to={child.to}
                               className={({ isActive }) => [
-                                'flex items-center gap-2.5 pl-[42px] pr-3 py-1.5 mx-2 rounded text-[12px] transition-all duration-150',
+                                'flex items-center gap-2.5 pl-[42px] pr-3 py-2 mx-2 rounded-md text-[13.5px] transition-all duration-150',
                                 isActive
-                                  ? 'text-letusOrange font-semibold bg-letusOrange/10'
-                                  : 'text-slate-500 hover:text-white hover:bg-white/5',
+                                  ? 'bg-letusBlue text-white font-semibold'
+                                  : 'text-slate-400 hover:text-white hover:bg-white/5',
                               ].join(' ')}
                             >
                               <span className="w-1 h-1 rounded-full bg-current opacity-50 shrink-0" />

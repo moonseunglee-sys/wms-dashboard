@@ -37,14 +37,14 @@ export default function PickingLayout() {
   const ctx: PickingCtx = { period, metric }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
 
       {/* 서브 헤더 */}
-      <div className="bg-white border-b border-gray-100 sticky top-[52px] z-10 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="flex items-center px-6 gap-3 h-11">
-          <span className="text-[12.5px] font-semibold text-gray-700">{pageLabel}</span>
+          <span className="text-sm font-semibold text-gray-700">{pageLabel}</span>
           <span className="text-gray-200 select-none">|</span>
-          <span className="text-[11px] text-gray-400">피킹생산성</span>
+          <span className="text-xs text-gray-400">피킹생산성</span>
 
           <div className="flex-1" />
 
@@ -55,9 +55,9 @@ export default function PickingLayout() {
                 key={label}
                 onClick={() => handlePeriod(label, make)}
                 className={[
-                  'px-3 py-1 rounded text-[11.5px] font-medium transition-all',
+                  'px-3 py-1 rounded text-xs font-medium transition-all',
                   periodLabel === label
-                    ? 'bg-letusOrange text-white shadow-sm'
+                    ? 'bg-letusBlue text-white shadow-sm'
                     : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50',
                 ].join(' ')}
               >
@@ -75,7 +75,7 @@ export default function PickingLayout() {
                 className={[
                   'px-3 py-1 rounded text-[11.5px] font-medium transition-all',
                   metric === m
-                    ? 'bg-white text-letusOrange shadow-sm'
+                    ? 'bg-white text-letusBlue shadow-sm'
                     : 'text-gray-400 hover:text-gray-600',
                 ].join(' ')}
               >

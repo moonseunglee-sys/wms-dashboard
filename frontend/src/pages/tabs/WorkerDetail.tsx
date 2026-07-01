@@ -33,7 +33,7 @@ function effBadge(eff: number) {
 /* ── Breadcrumb ─────────────────────────────────────── */
 function Breadcrumb({ items }: { items: { label: string; onClick: () => void }[] }) {
   return (
-    <div className="flex items-center gap-1 text-[12px] mb-4">
+    <div className="flex items-center gap-1 text-xs mb-4">
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <span className="text-gray-300">›</span>}
@@ -42,7 +42,7 @@ function Breadcrumb({ items }: { items: { label: string; onClick: () => void }[]
             className={[
               'px-2 py-0.5 rounded',
               i === items.length - 1
-                ? 'font-semibold text-letusOrange bg-orange-50'
+                ? 'font-semibold text-letusBlue bg-blue-50'
                 : 'text-gray-400 hover:text-gray-700',
             ].join(' ')}
           >
@@ -71,7 +71,7 @@ function BrandGrid({ rows, metric, onSelect }: {
         }
         const eff = std > 0 ? (act / std) * 100 : 0
         const isAmt = metric === 'amount'
-        const primary = isAmt ? `${fmtM(amt / 1_000_000)}₩` : fmtNum(box)
+        const primary = isAmt ? `${fmtM(amt / 1_000_000)}` : fmtNum(box)
         return (
           <button
             key={owner}
@@ -81,19 +81,19 @@ function BrandGrid({ rows, metric, onSelect }: {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full" style={{ background: OWNER_COLOR[owner] }} />
-                <span className="text-[14px] font-bold text-gray-700 group-hover:text-letusOrange">{owner}</span>
+                <span className="text-sm font-bold text-gray-700 group-hover:text-letusBlue">{owner}</span>
               </div>
               <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${effBadge(eff)}`}>
                 {fmtPct(eff)}
               </span>
             </div>
-            <p className="text-[22px] font-bold" style={{ color: OWNER_COLOR[owner] }}>{primary}</p>
-            <div className="flex gap-3 mt-2 text-[11px] text-gray-400">
+            <p className="text-xl font-bold" style={{ color: OWNER_COLOR[owner] }}>{primary}</p>
+            <div className="flex gap-3 mt-2 text-xs text-gray-400">
               <span>{zones.size}개 구역</span>
               <span>·</span>
               <span>표준 {std.toFixed(0)}h / 실적 {act.toFixed(0)}h</span>
             </div>
-            <div className="mt-3 text-[11px] text-gray-300 group-hover:text-letusOrange flex items-center gap-1">
+            <div className="mt-3 text-xs text-gray-300 group-hover:text-letusBlue flex items-center gap-1">
               <span>구역 상세 보기</span>
               <span>›</span>
             </div>
@@ -133,16 +133,16 @@ function ZoneGrid({ rows, owner, metric, onSelect }: {
           className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-left hover:shadow-md hover:border-gray-200 transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[13px] font-bold text-gray-700 group-hover:text-letusOrange">{z.zone}</span>
+            <span className="text-sm font-bold text-gray-700 group-hover:text-letusBlue">{z.zone}</span>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${effBadge(z.eff)}`}>
               {fmtPct(z.eff)}
             </span>
           </div>
-          <p className="text-[18px] font-bold" style={{ color }}>
-            {isAmt ? `${fmtM(z.amt / 1_000_000)}₩` : fmtNum(z.box)}
+          <p className="text-lg font-bold" style={{ color }}>
+            {isAmt ? `${fmtM(z.amt / 1_000_000)}` : fmtNum(z.box)}
           </p>
-          <div className="mt-1 text-[11px] text-gray-400">{z.days}일 운영</div>
-          <div className="mt-2 text-[11px] text-gray-300 group-hover:text-letusOrange flex items-center gap-1">
+          <div className="mt-1 text-xs text-gray-400">{z.days}일 운영</div>
+          <div className="mt-2 text-xs text-gray-300 group-hover:text-letusBlue flex items-center gap-1">
             <span>작업자 보기</span><span>›</span>
           </div>
         </button>
@@ -161,7 +161,7 @@ function WorkerTable({ workers, metric, onSelect }: {
   )
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-[12px]">
+      <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-gray-100">
             <th className="text-left py-2 px-3 text-gray-400 font-medium">#</th>
@@ -169,7 +169,7 @@ function WorkerTable({ workers, metric, onSelect }: {
             <th className="text-left py-2 px-3 text-gray-400 font-medium">구역</th>
             <th className="text-left py-2 px-3 text-gray-400 font-medium">시프트</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">가동률</th>
-            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M₩)' : '박스수'}</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M)' : '박스수'}</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">표준시간</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">실적시간</th>
           </tr>
@@ -178,11 +178,11 @@ function WorkerTable({ workers, metric, onSelect }: {
           {workers.map((w, i) => (
             <tr
               key={`${w.worker_name}-${w.zone}`}
-              className={`cursor-pointer hover:bg-orange-50/50 ${i % 2 === 0 ? 'bg-gray-50/30' : ''}`}
+              className={`cursor-pointer hover:bg-blue-50/40 transition-colors ${i % 2 === 0 ? 'bg-gray-50/30' : ''}`}
               onClick={() => onSelect(w.worker_name)}
             >
               <td className="py-2 px-3 text-gray-300">{i + 1}</td>
-              <td className="py-2 px-3 font-semibold text-gray-700 hover:text-letusOrange">{w.worker_name}</td>
+              <td className="py-2 px-3 font-semibold text-gray-700">{w.worker_name}</td>
               <td className="py-2 px-3 text-gray-500">{w.zone}</td>
               <td className="py-2 px-3 text-gray-500">{w.shift ?? '-'}</td>
               <td className="py-2 px-3 text-right">
@@ -227,14 +227,14 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
   return (
     <div className="space-y-4">
       {/* 요약 */}
-      <div className="flex gap-6 text-[12px]">
+      <div className="flex gap-6 text-xs">
         <div><span className="text-gray-400">평균 가동률 </span><span className="font-bold" style={{ color: effColor(avgEff) }}>{fmtPct(avgEff)}</span></div>
         <div><span className="text-gray-400">가동일수 </span><span className="font-bold text-gray-700">{daily.length}일</span></div>
         <div>
           <span className="text-gray-400">{isAmt ? '총 금액 ' : '총 박스 '}</span>
           <span className="font-bold text-gray-700">
             {isAmt
-              ? `${fmtM(daily.reduce((s, d) => s + d.pick_amount, 0) / 1_000_000)}₩`
+              ? `${fmtM(daily.reduce((s, d) => s + d.pick_amount, 0) / 1_000_000)}`
               : fmtNum(daily.reduce((s, d) => s + d.pick_box, 0))}
           </span>
         </div>
@@ -242,7 +242,7 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
 
       {/* 가동률 일별 차트 */}
       <div>
-        <p className="text-[12px] font-semibold text-gray-600 mb-2">일별 가동률 추이 (%)</p>
+        <p className="text-xs font-semibold text-gray-600 mb-2">일별 가동률 추이 (%)</p>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -262,12 +262,12 @@ function WorkerDailyDetail({ workerName, daily, metric }: {
 
       {/* 일별 상세표 */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[11px]">
+        <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-100">
               <th className="text-left py-1.5 px-2 text-gray-400 font-medium">날짜</th>
               <th className="text-right py-1.5 px-2 text-gray-400 font-medium">가동률</th>
-              <th className="text-right py-1.5 px-2 text-gray-400 font-medium">{isAmt ? '금액(M₩)' : '박스수'}</th>
+              <th className="text-right py-1.5 px-2 text-gray-400 font-medium">{isAmt ? '금액(M)' : '박스수'}</th>
               <th className="text-right py-1.5 px-2 text-gray-400 font-medium">표준시간</th>
               <th className="text-right py-1.5 px-2 text-gray-400 font-medium">실적시간</th>
             </tr>
@@ -325,11 +325,11 @@ export default function WorkerDetail({ period, metric }: Props) {
         <CardContent className="px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[13px] font-bold mb-1">작업자 상세</p>
+              <p className="text-sm font-semibold mb-1">작업자 상세</p>
               <Breadcrumb items={breadcrumb} />
             </div>
             {depth > 0 && (
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {depth === 1 && `${filter.owner} · 구역 선택`}
                 {depth === 2 && `${filter.owner} › ${filter.zone} · 작업자 선택`}
                 {depth === 3 && `${filter.owner} › ${filter.zone} › ${filter.worker}`}
@@ -359,7 +359,7 @@ export default function WorkerDetail({ period, metric }: Props) {
       {!loading && depth === 2 && (
         <Card>
           <CardHeader className="px-5 py-4 border-b border-border">
-            <CardTitle className="text-[13px] font-bold">
+            <CardTitle className="text-sm font-semibold">
               {filter.owner} › {filter.zone} · 작업자별 실적 (가동률 순)
             </CardTitle>
           </CardHeader>
@@ -372,7 +372,7 @@ export default function WorkerDetail({ period, metric }: Props) {
       {!loading && depth === 3 && filter.worker && (
         <Card>
           <CardHeader className="px-5 py-4 border-b border-border">
-            <CardTitle className="text-[13px] font-bold">
+            <CardTitle className="text-sm font-semibold">
               {filter.worker} · 일별 실적 상세
             </CardTitle>
           </CardHeader>

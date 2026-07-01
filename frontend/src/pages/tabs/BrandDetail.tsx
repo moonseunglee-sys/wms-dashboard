@@ -21,7 +21,7 @@ function metricVal(r: ZoneDaily, metric: Metric) {
   return metric === 'amount' ? (r.pick_amount ?? 0) : (r.pick_box ?? 0)
 }
 function metricScale(metric: Metric) { return metric === 'amount' ? 1_000_000 : 1 }
-function metricUnit(metric: Metric)  { return metric === 'amount' ? 'M₩' : '박스' }
+function metricUnit(metric: Metric)  { return metric === 'amount' ? 'M' : '박스' }
 
 /* ── Zone별 집계 ── */
 interface ZoneRow {
@@ -86,12 +86,12 @@ function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
   const isAmt = metric === 'amount'
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-[12px]">
+      <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-gray-100">
             <th className="text-left py-2 px-3 text-gray-400 font-medium">구역</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">가동률</th>
-            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M₩)' : '박스수'}</th>
+            <th className="text-right py-2 px-3 text-gray-400 font-medium">{isAmt ? '금액(M)' : '박스수'}</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">표준시간</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">실적시간</th>
             <th className="text-right py-2 px-3 text-gray-400 font-medium">가동일수</th>
@@ -128,8 +128,8 @@ function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
-      <CardHeader className="px-5 py-4 border-b border-border">
-        <CardTitle className="text-[13px] font-bold">{title}</CardTitle>
+      <CardHeader className="px-5 py-3.5 border-b border-border">
+        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-5">{children}</CardContent>
     </Card>
@@ -140,7 +140,7 @@ function StatBadge({ label, value, color }: { label: string; value: string; colo
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">{label}</span>
-      <span className="text-[18px] font-bold" style={{ color }}>{value}</span>
+      <span className="text-lg font-bold" style={{ color }}>{value}</span>
     </div>
   )
 }
@@ -190,7 +190,7 @@ export default function BrandDetail({ period, metric }: Props) {
             key={o}
             onClick={() => setSelectedOwner(o)}
             className={[
-              'px-4 py-2 rounded-lg text-[13px] font-semibold transition-all border',
+              'px-4 py-2 rounded-lg text-sm font-semibold transition-all border',
               selectedOwner === o
                 ? 'text-white border-transparent shadow-sm'
                 : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
@@ -215,7 +215,7 @@ export default function BrandDetail({ period, metric }: Props) {
             <div className="flex gap-8 justify-around">
               <StatBadge
                 label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
-                value={isAmt ? `${fmtM(totalAmt / 1_000_000)}₩` : fmtNum(totalBox)}
+                value={isAmt ? `${fmtM(totalAmt / 1_000_000)}` : fmtNum(totalBox)}
                 color={OWNER_COLOR[selectedOwner]}
               />
               <StatBadge label="평균 가동률" value={fmtPct(eff)}
@@ -256,8 +256,8 @@ export default function BrandDetail({ period, metric }: Props) {
                 <Tooltip
                   formatter={(v: number, name: string) =>
                     name === 'total'
-                      ? [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, '합계']
-                      : [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '₩' : ''}`, name]
+                      ? [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '' : ''}`, '합계']
+                      : [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '' : ''}`, name]
                   }
                   contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                 />

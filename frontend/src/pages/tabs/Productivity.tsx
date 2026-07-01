@@ -25,10 +25,10 @@ function SectionCard({ title, subtitle, children }: {
 }) {
   return (
     <Card>
-      <CardHeader className="px-5 py-4 border-b border-border">
+      <CardHeader className="px-5 py-3.5 border-b border-border">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[13px] font-bold">{title}</CardTitle>
-          {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
+          <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         </div>
       </CardHeader>
       <CardContent className="p-5">{children}</CardContent>
@@ -119,7 +119,7 @@ export default function Productivity({ period, metric }: Props) {
   const { start, end } = periodToRange(period)
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const isAmt = metric === 'amount'
-  const unit = isAmt ? 'M₩' : '박스'
+  const unit = isAmt ? 'M' : '박스'
 
   /* 전체 KPI */
   let totalStd = 0, totalAct = 0, totalVal = 0
@@ -144,29 +144,29 @@ export default function Productivity({ period, metric }: Props) {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-5">
-            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">전체 가동률</p>
-            <p className="text-[28px] font-bold" style={{
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">전체 가동률</p>
+            <p className="text-2xl font-bold" style={{
               color: overallEff >= 100 ? '#10b981' : overallEff >= 80 ? '#f97316' : '#ef4444'
             }}>{fmtPct(overallEff)}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">목표 100%</p>
+            <p className="text-xs text-muted-foreground mt-1">목표 100%</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">
               시간당 피킹 ({unit}/h)
             </p>
-            <p className="text-[28px] font-bold text-[#FF6B35]">
+            <p className="text-2xl font-bold text-[#FF6B35]">
               {isAmt ? fmtM(pickPerHr) : fmtNum(Math.round(pickPerHr))}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-1">실적시간 기준</p>
+            <p className="text-xs text-muted-foreground mt-1">실적시간 기준</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-2">표준/실적 시간</p>
-            <p className="text-[28px] font-bold">{totalStd.toFixed(0)}h</p>
-            <p className="text-[11px] text-muted-foreground mt-1">실적 {totalAct.toFixed(0)}h</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">표준/실적 시간</p>
+            <p className="text-2xl font-bold">{totalStd.toFixed(0)}h</p>
+            <p className="text-xs text-muted-foreground mt-1">실적 {totalAct.toFixed(0)}h</p>
           </CardContent>
         </Card>
       </div>
@@ -267,7 +267,7 @@ export default function Productivity({ period, metric }: Props) {
                 />
                 <Tooltip
                   formatter={(v: number, name: string) => [
-                    isAmt ? `${fmtM(v)}₩/h` : `${fmtNum(Math.round(v))}박스/h`,
+                    isAmt ? `${fmtM(v)}/h` : `${fmtNum(Math.round(v))}박스/h`,
                     name,
                   ]}
                   contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}

@@ -30,7 +30,7 @@
 @theme {
   --color-letusBlue:    #2563eb;
   --color-letusOrange:  #FF6B35;
-  --color-letusSidebar: #1a2332;
+  --color-letusSidebar: #273444;   /* 동료 LETUS 사이트와 동일 */
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -60,8 +60,11 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── 글로벌 리셋 ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── 글로벌 리셋 ──
+   ※ margin/padding 전역 0 리셋은 제거함. Tailwind v4 유틸리티는 cascade layer(utilities)에
+   들어가는데, layer 밖(unlayered)인 `* {margin:0;padding:0}` 가 layer보다 우선해서
+   p-/m-/gap 등 모든 간격 유틸을 0으로 덮어써 UI 전체가 짓눌렸었음. 리셋은 Tailwind preflight가 담당. */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
   font-family: Pretendard, 'Segoe UI', system-ui, -apple-system, sans-serif;

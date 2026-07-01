@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
-import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
+import { periodToRange, dateToBucket, bucketLabel, dateToWeekStart, getWeekEnd } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
 import {
   OWNER_COLOR, OWNERS,
@@ -345,9 +345,18 @@ export default function Overview({ period, metric, granularity }: Props) {
     OWNERS.map(o => [o, aggregateKpi(pRows.filter(r => r.owner === o))])
   )
 
-  const chartRows = granularity === 'day' ? pRows : rows
+  // 추이 차트 데이터: 일별은 '선택일이 속한 주(금~목)'의 근무일 전체를 막대로,
+  //                  주간/월간은 전체 히스토리 기반
+  const chartRows = (() => {
+    if (granularity !== 'day') return rows
+    const ws = dateToWeekStart(start)               // 선택일이 속한 주 시작(금)
+    const we = getWeekEnd(new Date(ws))
+    const weStr = `${we.getFullYear()}-${String(we.getMonth() + 1).padStart(2, '0')}-${String(we.getDate()).padStart(2, '0')}`
+    return rows.filter(r => r.work_date >= ws && r.work_date <= weStr)
+  })()
   const trendData = toTrendData(chartRows, granularity)
   const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
+  const trendScope = granularity === 'day' ? '해당 주(금~목) 기준' : '전체 기간 기준'
 
   /* 도넛 데이터 */
   const brandDonut: DonutSegment[] = OWNERS.map(o => ({
@@ -449,8 +458,8 @@ export default function Overview({ period, metric, granularity }: Props) {
       <Card>
         <CardHeader className="px-5 py-3.5 border-b border-border">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">{granLabel} 피킹금액 추이 (백만원)</CardTitle>
-            <span className="text-xs text-muted-foreground">전체 기간 기준</span>
+            <CardTitle className="text-sm font-semibold">{granLabel} {isAmt ? '피킹금액 (백만원)' : '피킹박스수'} 추이</CardTitle>
+            <span className="text-xs text-muted-foreground">{trendScope}</span>
           </div>
         </CardHeader>
         <CardContent className="p-5">

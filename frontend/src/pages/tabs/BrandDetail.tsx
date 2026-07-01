@@ -165,8 +165,9 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
   const { start, end } = periodToRange(period)
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const ownerRows = pRows.filter(r => r.owner === selectedOwner)
-  /* 추이 차트는 전체 기간 데이터 사용 */
-  const ownerAllRows = rows.filter(r => r.owner === selectedOwner)
+  /* 추이 차트: 일별은 선택 기간, 주간/월간은 전체 히스토리 */
+  const ownerAllRows  = rows.filter(r => r.owner === selectedOwner)
+  const chartOwnerRows = granularity === 'day' ? ownerRows : ownerAllRows
 
   /* 선택 브랜드 KPI — 선택 기간 기준 */
   let totalStd = 0, totalAct = 0, totalBox = 0, totalAmt = 0
@@ -183,9 +184,9 @@ export default function BrandDetail({ period, metric, granularity }: Props) {
   /* 구역 집계 — 선택 기간 기준 */
   const zoneAggs = aggregateZones(ownerRows)
 
-  /* 추이 차트 — 전체 데이터 기반 */
-  const { data: trendData, zones } = zoneValueTrend(ownerAllRows, metric, granularity)
-  const granLabel = granularity === 'week' ? '주간' : '월간'
+  /* 추이 차트 */
+  const { data: trendData, zones } = zoneValueTrend(chartOwnerRows, metric, granularity)
+  const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
   return (
     <div className="space-y-5 animate-fade-in">

@@ -121,7 +121,7 @@ export default function Productivity({ period, metric, granularity }: Props) {
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const isAmt = metric === 'amount'
   const unit = isAmt ? 'M' : '박스'
-  const granLabel = granularity === 'week' ? '주간' : '월간'
+  const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
   /* 전체 KPI — 선택 기간 기준 */
   let totalStd = 0, totalAct = 0, totalVal = 0
@@ -134,10 +134,11 @@ export default function Productivity({ period, metric, granularity }: Props) {
   const overallEff = totalStd > 0 ? (totalAct / totalStd) * 100 : 0
   const pickPerHr  = totalAct > 0 ? totalVal / totalAct : 0
 
-  /* 차트 데이터 — 전체 데이터 기반 */
-  const effTrend  = weeklyEffByOwner(rows, granularity)
+  /* 차트 데이터 — 일별은 선택 기간, 주간/월간은 전체 기반 */
+  const chartRows = granularity === 'day' ? pRows : rows
+  const effTrend  = weeklyEffByOwner(chartRows, granularity)
   const zoneEff   = zoneEfficiency(pRows)       // 구역별 가동률은 기간 기준 유지
-  const pphTrend  = pickPerHourByBrand(rows, metric, granularity)
+  const pphTrend  = pickPerHourByBrand(chartRows, metric, granularity)
 
   return (
     <div className="space-y-5 animate-fade-in">

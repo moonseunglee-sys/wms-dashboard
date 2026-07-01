@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import type { Period } from '../../lib/types'
-import { thisWeek, thisMonth } from '../../lib/weekUtils'
+import { thisMonth, thisWeek, today } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
 import type { Metric } from '../tabs/Overview'
 
@@ -11,12 +11,6 @@ export interface PickingCtx {
   granularity: Granularity
 }
 
-const PERIOD_OPTS: { label: string; make: () => Period }[] = [
-  { label: '이번주',   make: thisWeek },
-  { label: '이번달',   make: thisMonth },
-  { label: '전체기간', make: (): Period => ({ type: 'all' }) },
-]
-
 const PAGE_LABELS: Record<string, string> = {
   '/picking/overview':     '종합현황',
   '/picking/center':       '센터별 분석',
@@ -25,44 +19,104 @@ const PAGE_LABELS: Record<string, string> = {
   '/picking/worker':       '작업자별 상세',
 }
 
+type Shortcut = '이번주' | '이번달' | '전체기간'
+
+function makeShortcutPeriod(s: Shortcut): Period {
+  if (s === '이번주') return thisWeek()
+  if (s === '이번달') return thisMonth()
+  return { type: 'all' }
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8"  y1="2" x2="8"  y2="6" />
+      <line x1="3"  y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+
 export default function PickingLayout() {
-  const [periodLabel, setPeriodLabel] = useState('이번달')
+  const [granularity, setGranularity] = useState<Granularity>('day')
+  const [shortcut, setShortcut]       = useState<Shortcut | null>('이번달')
   const [period, setPeriod]           = useState<Period>(thisMonth())
   const [metric, setMetric]           = useState<Metric>('amount')
-  const [granularity, setGranularity] = useState<Granularity>('week')
+
+  // 날짜 직접 선택 팝오버
+  const [showPicker, setShowPicker]   = useState(false)
+  const [pickerStart, setPickerStart] = useState(today())
+  const [pickerEnd, setPickerEnd]     = useState(today())
+  const pickerRef = useRef<HTMLDivElement>(null)
+
   const { pathname } = useLocation()
-
-  function handlePeriod(label: string, make: () => Period) {
-    setPeriodLabel(label)
-    setPeriod(make())
-  }
-
   const pageLabel = PAGE_LABELS[pathname] ?? '피킹생산성'
   const ctx: PickingCtx = { period, metric, granularity }
+
+  function handleShortcut(s: Shortcut) {
+    setShortcut(s)
+    setPeriod(makeShortcutPeriod(s))
+    setShowPicker(false)
+  }
+
+  function applyCustomRange() {
+    if (!pickerStart || !pickerEnd) return
+    const start = pickerStart <= pickerEnd ? pickerStart : pickerEnd
+    const end   = pickerStart <= pickerEnd ? pickerEnd   : pickerStart
+    setPeriod({ type: 'custom', start, end })
+    setShortcut(null)
+    setShowPicker(false)
+  }
+
+  // 팝오버 외부 클릭 닫기
+  useEffect(() => {
+    if (!showPicker) return
+    function onDown(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node))
+        setShowPicker(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showPicker])
+
+  const isCustom = period.type === 'custom'
+  const customLabel = isCustom
+    ? `${(period as { start: string; end: string }).start.slice(5)}~${(period as { start: string; end: string }).end.slice(5)}`
+    : null
+
+  const GRAN_OPTS: { key: Granularity; label: string }[] = [
+    { key: 'day',   label: '일별' },
+    { key: 'week',  label: '주간' },
+    { key: 'month', label: '월간' },
+  ]
+  const SHORTCUTS: Shortcut[] = ['이번주', '이번달', '전체기간']
 
   return (
     <div className="flex flex-col">
 
-      {/* 서브 헤더 */}
+      {/* ── 서브 헤더 ── */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="flex items-center px-6 gap-3 h-11">
-          <span className="text-sm font-semibold text-gray-700">{pageLabel}</span>
+
+          {/* 페이지 제목 */}
+          <span className="text-sm font-semibold text-gray-700 shrink-0">{pageLabel}</span>
           <span className="text-gray-200 select-none">|</span>
-          <span className="text-xs text-gray-400">피킹생산성</span>
+          <span className="text-xs text-gray-400 shrink-0">피킹생산성</span>
 
           <div className="flex-1" />
 
-          {/* 기간 선택 */}
-          <div className="flex items-center gap-1">
-            {PERIOD_OPTS.map(({ label, make }) => (
+          {/* ── 집계 단위 ── */}
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+            {GRAN_OPTS.map(({ key, label }) => (
               <button
-                key={label}
-                onClick={() => handlePeriod(label, make)}
+                key={key}
+                onClick={() => setGranularity(key)}
                 className={[
-                  'px-3 py-1 rounded text-xs font-medium transition-all',
-                  periodLabel === label
-                    ? 'bg-letusBlue text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50',
+                  'px-3 py-1 rounded-md text-xs font-medium transition-all',
+                  granularity === key
+                    ? 'bg-white text-letusBlue shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600',
                 ].join(' ')}
               >
                 {label}
@@ -70,27 +124,77 @@ export default function PickingLayout() {
             ))}
           </div>
 
-          <span className="text-gray-200 select-none">|</span>
-
-          {/* 주간/월간 토글 */}
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
-            {(['week', 'month'] as Granularity[]).map(g => (
+          {/* ── 기간 단축키 + 달력 ── */}
+          <div className="flex items-center gap-1">
+            {SHORTCUTS.map(s => (
               <button
-                key={g}
-                onClick={() => setGranularity(g)}
+                key={s}
+                onClick={() => handleShortcut(s)}
                 className={[
                   'px-3 py-1 rounded text-xs font-medium transition-all',
-                  granularity === g
-                    ? 'bg-white text-letusBlue shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600',
+                  shortcut === s
+                    ? 'bg-letusBlue text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50',
                 ].join(' ')}
               >
-                {g === 'week' ? '주간' : '월간'}
+                {s}
               </button>
             ))}
+
+            {/* 달력 픽커 */}
+            <div className="relative" ref={pickerRef}>
+              <button
+                onClick={() => setShowPicker(v => !v)}
+                className={[
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all',
+                  (showPicker || isCustom)
+                    ? 'bg-letusBlue text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50',
+                ].join(' ')}
+                title="기간 직접 선택"
+              >
+                <CalendarIcon />
+                {customLabel && <span>{customLabel}</span>}
+              </button>
+
+              {showPicker && (
+                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50 w-[220px]">
+                  <p className="text-[11px] font-semibold text-gray-600 mb-3">기간 직접 선택</p>
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[10px] text-gray-400 block mb-1">시작일</label>
+                      <input
+                        type="date"
+                        value={pickerStart}
+                        onChange={e => setPickerStart(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-letusBlue"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 block mb-1">종료일</label>
+                      <input
+                        type="date"
+                        value={pickerEnd}
+                        onChange={e => setPickerEnd(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-letusBlue"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={applyCustomRange}
+                    disabled={!pickerStart || !pickerEnd}
+                    className="mt-3 w-full bg-letusBlue hover:bg-blue-600 text-white text-xs font-semibold py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+                  >
+                    적용
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* 지표 토글 */}
+          <span className="text-gray-200 select-none">|</span>
+
+          {/* ── 지표 토글 ── */}
           <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
             {(['amount', 'box'] as Metric[]).map(m => (
               <button
@@ -110,7 +214,7 @@ export default function PickingLayout() {
         </div>
       </div>
 
-      {/* 콘텐츠 */}
+      {/* ── 콘텐츠 ── */}
       <div className="p-5 flex-1">
         <Outlet context={ctx} />
       </div>

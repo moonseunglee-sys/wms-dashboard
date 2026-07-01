@@ -78,8 +78,8 @@ export function dateToWeekStart(dateStr: string): string {
   return fmt(getWeekStart(new Date(dateStr)))
 }
 
-/* ── Granularity (주간/월간) ─────────────────────────── */
-export type Granularity = 'week' | 'month'
+/* ── Granularity (일별/주간/월간) ────────────────────── */
+export type Granularity = 'day' | 'week' | 'month'
 
 export function dateToMonthKey(dateStr: string): string {
   return dateStr.slice(0, 7)  // 'YYYY-MM'
@@ -90,9 +90,22 @@ export function monthLabel(monthKey: string): string {
 }
 
 export function dateToBucket(dateStr: string, gran: Granularity): string {
-  return gran === 'week' ? dateToWeekStart(dateStr) : dateToMonthKey(dateStr)
+  if (gran === 'day')   return dateStr
+  if (gran === 'week')  return dateToWeekStart(dateStr)
+  return dateToMonthKey(dateStr)
 }
 
 export function bucketLabel(bucket: string, gran: Granularity): string {
-  return gran === 'week' ? weekLabel(bucket) : monthLabel(bucket)
+  if (gran === 'day') {
+    const [, mm, dd] = bucket.split('-')
+    return `${parseInt(mm)}/${parseInt(dd)}`
+  }
+  if (gran === 'week') return weekLabel(bucket)
+  return monthLabel(bucket)
+}
+
+/** 오늘 날짜 문자열 'YYYY-MM-DD' */
+export function today(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }

@@ -64,7 +64,7 @@ export default function CenterPage({ period, metric, granularity }: Props) {
   const isAmt = metric === 'amount'
   const scale = metricScale(metric)
   const unit = isAmt ? 'M' : '박스'
-  const granLabel = granularity === 'week' ? '주간' : '월간'
+  const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
 
   /* ── 센터별 KPI (선택 기간) ─────────────────────── */
   const centerKpi = CENTERS.map(center => {
@@ -88,9 +88,10 @@ export default function CenterPage({ period, metric, granularity }: Props) {
     }
   })
 
-  /* ── 센터별 실적 추이 (전체 데이터) ───────────────── */
+  /* ── 센터별 실적 추이 — 일별은 선택 기간, 주간/월간은 전체 ── */
+  const chartRows = granularity === 'day' ? pRows : rows
   const trendMap = new Map<string, Record<string, number>>()
-  for (const r of rows) {
+  for (const r of chartRows) {
     const bucket = dateToBucket(r.work_date, granularity)
     const center = CENTER_OWNER[r.owner] ?? '기타'
     if (!trendMap.has(bucket)) trendMap.set(bucket, {})
@@ -106,10 +107,10 @@ export default function CenterPage({ period, metric, granularity }: Props) {
       total: +(e['_total'] ?? 0).toFixed(2),
     }))
 
-  /* ── 1센터 브랜드 비중 추이 (전체 데이터) ─────────── */
+  /* ── 1센터 브랜드 비중 추이 ─────────────────────── */
   const c1Owners = CENTER_OWNERS['1센터']
   const c1TrendMap = new Map<string, Record<string, number>>()
-  for (const r of rows.filter(r => c1Owners.includes(r.owner))) {
+  for (const r of chartRows.filter(r => c1Owners.includes(r.owner))) {
     const bucket = dateToBucket(r.work_date, granularity)
     if (!c1TrendMap.has(bucket)) c1TrendMap.set(bucket, {})
     const e = c1TrendMap.get(bucket)!

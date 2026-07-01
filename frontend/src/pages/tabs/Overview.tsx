@@ -221,9 +221,10 @@ export default function Overview({ period, metric, granularity }: Props) {
     OWNERS.map(o => [o, aggregateKpi(pRows.filter(r => r.owner === o))])
   )
 
-  /* 추이 차트 — 전체 히스토리 */
-  const trendData = toTrendData(rows, granularity)
-  const granLabel = granularity === 'week' ? '주간' : '월간'
+  /* 추이 차트 — 일별은 선택 기간, 주간/월간은 전체 히스토리 */
+  const chartRows = granularity === 'day' ? pRows : rows
+  const trendData = toTrendData(chartRows, granularity)
+  const granLabel = granularity === 'day' ? '일별' : granularity === 'week' ? '주간' : '월간'
   const isAmt = metric === 'amount'
 
   return (

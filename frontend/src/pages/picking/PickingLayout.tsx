@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import type { Period } from '../../lib/types'
 import { thisWeek, thisMonth } from '../../lib/weekUtils'
+import type { Granularity } from '../../lib/weekUtils'
 import type { Metric } from '../tabs/Overview'
 
 export interface PickingCtx {
   period: Period
   metric: Metric
+  granularity: Granularity
 }
 
 const PERIOD_OPTS: { label: string; make: () => Period }[] = [
@@ -20,12 +22,14 @@ const PAGE_LABELS: Record<string, string> = {
   '/picking/brand':        '브랜드별 상세',
   '/picking/productivity': '생산성 분석',
   '/picking/worker':       '작업자별 상세',
+  '/picking/center':       '센터별 분석',
 }
 
 export default function PickingLayout() {
   const [periodLabel, setPeriodLabel] = useState('이번달')
   const [period, setPeriod]           = useState<Period>(thisMonth())
   const [metric, setMetric]           = useState<Metric>('amount')
+  const [granularity, setGranularity] = useState<Granularity>('week')
   const { pathname } = useLocation()
 
   function handlePeriod(label: string, make: () => Period) {
@@ -34,7 +38,7 @@ export default function PickingLayout() {
   }
 
   const pageLabel = PAGE_LABELS[pathname] ?? '피킹생산성'
-  const ctx: PickingCtx = { period, metric }
+  const ctx: PickingCtx = { period, metric, granularity }
 
   return (
     <div className="flex flex-col">
@@ -66,6 +70,26 @@ export default function PickingLayout() {
             ))}
           </div>
 
+          <span className="text-gray-200 select-none">|</span>
+
+          {/* 주간/월간 토글 */}
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
+            {(['week', 'month'] as Granularity[]).map(g => (
+              <button
+                key={g}
+                onClick={() => setGranularity(g)}
+                className={[
+                  'px-3 py-1 rounded text-xs font-medium transition-all',
+                  granularity === g
+                    ? 'bg-white text-letusBlue shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600',
+                ].join(' ')}
+              >
+                {g === 'week' ? '주간' : '월간'}
+              </button>
+            ))}
+          </div>
+
           {/* 지표 토글 */}
           <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
             {(['amount', 'box'] as Metric[]).map(m => (
@@ -73,7 +97,7 @@ export default function PickingLayout() {
                 key={m}
                 onClick={() => setMetric(m)}
                 className={[
-                  'px-3 py-1 rounded text-[11.5px] font-medium transition-all',
+                  'px-3 py-1 rounded text-xs font-medium transition-all',
                   metric === m
                     ? 'bg-white text-letusBlue shadow-sm'
                     : 'text-gray-400 hover:text-gray-600',

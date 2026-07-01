@@ -3,14 +3,15 @@ import {
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
-import { periodToRange, dateToWeekStart, weekLabel } from '../../lib/weekUtils'
+import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
+import type { Granularity } from '../../lib/weekUtils'
 import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-interface Props { period: Period; metric: Metric }
+interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`
 const fmtM   = (v: number) => `${v.toFixed(1)}M`
@@ -36,30 +37,30 @@ function SectionCard({ title, subtitle, children }: {
   )
 }
 
-/* ── 브랜드별 주간 가동률 추이 ─────────────────────── */
-function weeklyEffByOwner(rows: ZoneDaily[]) {
+/* ── 브랜드별 가동률 추이 (전체 데이터, granularity) ── */
+function weeklyEffByOwner(rows: ZoneDaily[], gran: Granularity) {
   const map = new Map<string, Map<string, { std: number; act: number }>>()
   for (const r of rows) {
-    const ws = dateToWeekStart(r.work_date)
-    if (!map.has(ws)) map.set(ws, new Map())
-    const wm = map.get(ws)!
-    if (!wm.has(r.owner)) wm.set(r.owner, { std: 0, act: 0 })
-    const e = wm.get(r.owner)!
+    const bucket = dateToBucket(r.work_date, gran)
+    if (!map.has(bucket)) map.set(bucket, new Map())
+    const bm = map.get(bucket)!
+    if (!bm.has(r.owner)) bm.set(r.owner, { std: 0, act: 0 })
+    const e = bm.get(r.owner)!
     e.std += r.std_time_hr
     e.act += r.act_time_hr
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ws, wm]) => ({
-      weekLabel: weekLabel(ws),
+    .map(([bucket, bm]) => ({
+      label: bucketLabel(bucket, gran),
       ...Object.fromEntries(OWNERS.map(o => {
-        const e = wm.get(o) ?? { std: 0, act: 0 }
+        const e = bm.get(o) ?? { std: 0, act: 0 }
         return [o, e.std > 0 ? +((e.act / e.std) * 100).toFixed(1) : null]
       })),
     }))
 }
 
-/* ── 구역별 가동률 집계 ─────────────────────────────── */
+/* ── 구역별 가동률 집계 ── */
 interface ZoneEffRow {
   zone: string; owner: string; eff: number; std: number; act: number
 }
@@ -77,32 +78,32 @@ function zoneEfficiency(rows: ZoneDaily[]): ZoneEffRow[] {
     .sort((a, b) => b.eff - a.eff)
 }
 
-/* ── 팀공당(시간당) 피킹실적 주간 추이 ─────────────── */
-function weeklyPickPerHour(rows: ZoneDaily[], metric: Metric) {
+/* ── 브랜드별 시간당 피킹 (전체 데이터, granularity) — 그룹 바용 ── */
+function pickPerHourByBrand(rows: ZoneDaily[], metric: Metric, gran: Granularity) {
   const scale = metric === 'amount' ? 1_000_000 : 1
   const map = new Map<string, Map<string, { val: number; act: number }>>()
   for (const r of rows) {
-    const ws = dateToWeekStart(r.work_date)
-    if (!map.has(ws)) map.set(ws, new Map())
-    const wm = map.get(ws)!
-    if (!wm.has(r.owner)) wm.set(r.owner, { val: 0, act: 0 })
-    const e = wm.get(r.owner)!
+    const bucket = dateToBucket(r.work_date, gran)
+    if (!map.has(bucket)) map.set(bucket, new Map())
+    const bm = map.get(bucket)!
+    if (!bm.has(r.owner)) bm.set(r.owner, { val: 0, act: 0 })
+    const e = bm.get(r.owner)!
     e.val += metricVal(r, metric) / scale
     e.act += r.act_time_hr
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ws, wm]) => ({
-      weekLabel: weekLabel(ws),
+    .map(([bucket, bm]) => ({
+      label: bucketLabel(bucket, gran),
       ...Object.fromEntries(OWNERS.map(o => {
-        const e = wm.get(o) ?? { val: 0, act: 0 }
-        return [o, e.act > 0 ? +((e.val / e.act)).toFixed(3) : null]
+        const e = bm.get(o) ?? { val: 0, act: 0 }
+        return [o, e.act > 0 ? +(e.val / e.act).toFixed(3) : null]
       })),
     }))
 }
 
-/* ── 메인 컴포넌트 ──────────────────────────────────── */
-export default function Productivity({ period, metric }: Props) {
+/* ── 메인 컴포넌트 ── */
+export default function Productivity({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
 
   if (loading) {
@@ -110,7 +111,7 @@ export default function Productivity({ period, metric }: Props) {
       <div className="flex items-center justify-center h-64 text-gray-400">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-letusOrange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[12px]">데이터 로딩 중...</p>
+          <p className="text-xs">데이터 로딩 중...</p>
         </div>
       </div>
     )
@@ -120,8 +121,9 @@ export default function Productivity({ period, metric }: Props) {
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const isAmt = metric === 'amount'
   const unit = isAmt ? 'M' : '박스'
+  const granLabel = granularity === 'week' ? '주간' : '월간'
 
-  /* 전체 KPI */
+  /* 전체 KPI — 선택 기간 기준 */
   let totalStd = 0, totalAct = 0, totalVal = 0
   const scale = isAmt ? 1_000_000 : 1
   for (const r of pRows) {
@@ -132,15 +134,15 @@ export default function Productivity({ period, metric }: Props) {
   const overallEff = totalStd > 0 ? (totalAct / totalStd) * 100 : 0
   const pickPerHr  = totalAct > 0 ? totalVal / totalAct : 0
 
-  /* 차트 데이터 */
-  const effTrend   = weeklyEffByOwner(pRows)
-  const zoneEff    = zoneEfficiency(pRows)
-  const pphTrend   = weeklyPickPerHour(pRows, metric)
+  /* 차트 데이터 — 전체 데이터 기반 */
+  const effTrend  = weeklyEffByOwner(rows, granularity)
+  const zoneEff   = zoneEfficiency(pRows)       // 구역별 가동률은 기간 기준 유지
+  const pphTrend  = pickPerHourByBrand(rows, metric, granularity)
 
   return (
     <div className="space-y-5 animate-fade-in">
 
-      {/* KPI 요약 */}
+      {/* KPI 요약 — 선택 기간 기준 */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-5">
@@ -171,15 +173,15 @@ export default function Productivity({ period, metric }: Props) {
         </Card>
       </div>
 
-      {/* 브랜드별 가동률 주간 추이 */}
-      <SectionCard title="브랜드별 가동률 주간 추이 (%)" subtitle="표준시간/실적시간">
+      {/* 브랜드별 가동률 추이 — 전체 히스토리 */}
+      <SectionCard title={`브랜드별 가동률 ${granLabel} 추이 (%)`} subtitle="표준시간/실적시간">
         {effTrend.length === 0 ? (
-          <div className="flex items-center justify-center h-40 text-gray-300 text-[12px]">데이터 없음</div>
+          <div className="flex items-center justify-center h-40 text-gray-300 text-xs">데이터 없음</div>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={effTrend} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="weekLabel" tick={{ fontSize: 11, fill: '#6b7280' }} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
               <YAxis
                 tick={{ fontSize: 11, fill: '#6b7280' }}
                 domain={[50, 120]}
@@ -204,13 +206,13 @@ export default function Productivity({ period, metric }: Props) {
         )}
       </SectionCard>
 
-      {/* 구역별 가동률 비교 + 팀공당 추이 나란히 */}
+      {/* 구역별 가동률 + 브랜드별 시간당 나란히 */}
       <div className="grid grid-cols-2 gap-5">
 
-        {/* 구역별 가동률 수평 막대 */}
+        {/* 구역별 가동률 수평 막대 — 선택 기간 기준 */}
         <SectionCard title="구역별 가동률 비교 (%)" subtitle="가동률 순">
           {zoneEff.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-gray-300 text-[12px]">데이터 없음</div>
+            <div className="flex items-center justify-center h-40 text-gray-300 text-xs">데이터 없음</div>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(200, zoneEff.length * 28)}>
               <BarChart
@@ -249,18 +251,18 @@ export default function Productivity({ period, metric }: Props) {
           )}
         </SectionCard>
 
-        {/* 팀공당(시간당) 피킹실적 추이 */}
+        {/* 브랜드별 시간당 피킹 — 그룹 바, 전체 히스토리 */}
         <SectionCard
-          title={`시간당 피킹실적 추이 (${unit}/h)`}
+          title={`브랜드별 시간당 피킹 ${granLabel} 추이 (${unit}/h)`}
           subtitle="실적시간 기준"
         >
           {pphTrend.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-gray-300 text-[12px]">데이터 없음</div>
+            <div className="flex items-center justify-center h-40 text-gray-300 text-xs">데이터 없음</div>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={pphTrend} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
+              <BarChart data={pphTrend} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="weekLabel" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#6b7280' }}
                   tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
@@ -274,14 +276,9 @@ export default function Productivity({ period, metric }: Props) {
                 />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 {OWNERS.map(o => (
-                  <Line
-                    key={o} dataKey={o}
-                    stroke={OWNER_COLOR[o]} strokeWidth={2.5}
-                    dot={{ r: 4, fill: OWNER_COLOR[o] }} activeDot={{ r: 6 }}
-                    type="monotone" connectNulls
-                  />
+                  <Bar key={o} dataKey={o} fill={OWNER_COLOR[o]} radius={[3,3,0,0]} maxBarSize={20} />
                 ))}
-              </LineChart>
+              </BarChart>
             </ResponsiveContainer>
           )}
         </SectionCard>

@@ -77,3 +77,22 @@ export function thisMonth(): Period {
 export function dateToWeekStart(dateStr: string): string {
   return fmt(getWeekStart(new Date(dateStr)))
 }
+
+/* ── Granularity (주간/월간) ─────────────────────────── */
+export type Granularity = 'week' | 'month'
+
+export function dateToMonthKey(dateStr: string): string {
+  return dateStr.slice(0, 7)  // 'YYYY-MM'
+}
+
+export function monthLabel(monthKey: string): string {
+  return `${parseInt(monthKey.slice(5, 7))}월`
+}
+
+export function dateToBucket(dateStr: string, gran: Granularity): string {
+  return gran === 'week' ? dateToWeekStart(dateStr) : dateToMonthKey(dateStr)
+}
+
+export function bucketLabel(bucket: string, gran: Granularity): string {
+  return gran === 'week' ? weekLabel(bucket) : monthLabel(bucket)
+}

@@ -4,7 +4,8 @@ import {
   CartesianGrid,
 } from 'recharts'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
-import { periodToRange, dateToWeekStart, weekLabel, getWeekEnd } from '../../lib/weekUtils'
+import { periodToRange, dateToWeekStart, weekLabel, getWeekEnd, dateToBucket, bucketLabel } from '../../lib/weekUtils'
+import type { Granularity } from '../../lib/weekUtils'
 import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export type Metric = 'amount' | 'box'
 
-interface Props { period: Period; metric: Metric }
+interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 /* ── 포맷 헬퍼 ───────────────────────────────────────────────── */
 const fmtM   = (v: number) => `${v.toFixed(1)}M`
@@ -44,20 +45,20 @@ function computeKpi(rows: ZoneDaily[], metric: Metric) {
   }
 }
 
-/* ── S1: 주간 피킹실적 추이 ─────────────────────────────────── */
-function toS1Data(rows: ZoneDaily[], metric: Metric) {
+/* ── S1: 피킹실적 추이 (전체 데이터 기반, granularity 지원) ── */
+function toS1Data(allRows: ZoneDaily[], metric: Metric, gran: Granularity) {
   const scale = metricScale(metric)
   const map = new Map<string, Record<string, number>>()
-  for (const r of rows) {
-    const ws = dateToWeekStart(r.work_date)
-    if (!map.has(ws)) map.set(ws, {})
-    const e = map.get(ws)!
+  for (const r of allRows) {
+    const bucket = dateToBucket(r.work_date, gran)
+    if (!map.has(bucket)) map.set(bucket, {})
+    const e = map.get(bucket)!
     e[r.owner] = (e[r.owner] ?? 0) + metricVal(r, metric) / scale
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ws, e]) => ({
-      weekLabel: weekLabel(ws),
+    .map(([bucket, e]) => ({
+      label: bucketLabel(bucket, gran),
       ...Object.fromEntries(OWNERS.map(o => [o, +(e[o] ?? 0).toFixed(2)])),
       total: +OWNERS.reduce((s, o) => s + (e[o] ?? 0), 0).toFixed(2),
     }))
@@ -123,8 +124,8 @@ function DonutChart({ data, title, metric }: {
   const total = data.reduce((s, d) => s + d.value, 0)
   if (total === 0) return (
     <div className="flex flex-col items-center">
-      <p className="text-[11px] text-gray-400 mb-2">{title}</p>
-      <div className="flex items-center justify-center h-[140px] text-gray-300 text-[12px]">데이터 없음</div>
+      <p className="text-xs text-gray-400 mb-2">{title}</p>
+      <div className="flex items-center justify-center h-[140px] text-gray-300 text-xs">데이터 없음</div>
     </div>
   )
   const scale = metricScale(metric)
@@ -132,7 +133,7 @@ function DonutChart({ data, title, metric }: {
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-[11px] text-gray-400 mb-1 font-medium">{title}</p>
+      <p className="text-xs text-gray-400 mb-1 font-medium">{title}</p>
       <PieChart width={160} height={160}>
         <Pie
           data={data} cx={78} cy={78}
@@ -149,7 +150,7 @@ function DonutChart({ data, title, metric }: {
       </PieChart>
       <div className="space-y-1 w-full mt-1">
         {data.map(d => (
-          <div key={d.name} className="flex items-center justify-between text-[11px]">
+          <div key={d.name} className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full inline-block" style={{ background: d.color }} />
               <span className="text-gray-600">{d.name}</span>
@@ -163,7 +164,7 @@ function DonutChart({ data, title, metric }: {
 }
 
 /* ── 메인 컴포넌트 ──────────────────────────────────────────── */
-export default function Overview({ period, metric }: Props) {
+export default function Overview({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
 
   if (loading) {
@@ -171,21 +172,21 @@ export default function Overview({ period, metric }: Props) {
       <div className="flex items-center justify-center h-64 text-gray-400">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-letusOrange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[12px]">데이터 로딩 중...</p>
+          <p className="text-xs">데이터 로딩 중...</p>
         </div>
       </div>
     )
   }
 
-  /* 기간 필터 */
+  /* 기간 필터 — KPI 카드 전용 */
   const { start, end } = periodToRange(period)
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
 
   /* KPI */
   const kpi = computeKpi(pRows, metric)
 
-  /* S1 data */
-  const s1Data = toS1Data(pRows, metric)
+  /* S1: 추이 차트는 전체 데이터 사용 */
+  const s1Data = toS1Data(rows, metric, granularity)
 
   /* S2 data — 3 고정 기간 */
   const now = new Date()
@@ -208,11 +209,12 @@ export default function Overview({ period, metric }: Props) {
 
   const unit = metricUnit(metric)
   const isAmt = metric === 'amount'
+  const granLabel = granularity === 'week' ? '주간' : '월간'
 
   return (
     <div className="space-y-5 animate-fade-in">
 
-      {/* KPI 카드 */}
+      {/* KPI 카드 — 선택 기간 기준 */}
       <div className="grid grid-cols-4 gap-4">
         <StatCard
           label={isAmt ? '총 피킹금액' : '총 피킹박스수'}
@@ -240,17 +242,17 @@ export default function Overview({ period, metric }: Props) {
         />
       </div>
 
-      {/* S1: 주간 피킹실적 추이 */}
-      <SectionCard title={`주간 피킹실적 추이 (${unit})`}>
+      {/* S1: 피킹실적 추이 — 전체 히스토리 */}
+      <SectionCard title={`${granLabel} 피킹실적 추이 (${unit})`}>
         {s1Data.length === 0 ? (
-          <div className="flex items-center justify-center h-40 text-gray-300 text-[12px]">
-            선택 기간에 데이터가 없습니다
+          <div className="flex items-center justify-center h-40 text-gray-300 text-xs">
+            데이터가 없습니다
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={s1Data} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="weekLabel" tick={{ fontSize: 11, fill: '#6b7280' }} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
               <YAxis
                 tick={{ fontSize: 11, fill: '#6b7280' }}
                 tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
@@ -271,8 +273,8 @@ export default function Overview({ period, metric }: Props) {
                 <Bar key={o} dataKey={o} stackId="a" fill={OWNER_COLOR[o]} radius={o === '3PL' ? [3,3,0,0] : [0,0,0,0]} />
               ))}
               <Line
-                dataKey="total" stroke="#FF6B35" strokeWidth={2}
-                dot={{ r: 3, fill: '#FF6B35' }} activeDot={{ r: 5 }}
+                dataKey="total" stroke="#94a3b8" strokeWidth={2}
+                dot={{ r: 3, fill: '#94a3b8' }} activeDot={{ r: 5 }}
                 type="monotone"
               />
             </ComposedChart>
@@ -295,7 +297,7 @@ export default function Overview({ period, metric }: Props) {
         {/* S3: 브랜드별 월별 비교 */}
         <SectionCard title={`브랜드별 월별 실적 (${unit})`}>
           {s3Data.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-gray-300 text-[12px]">데이터 없음</div>
+            <div className="flex items-center justify-center h-40 text-gray-300 text-xs">데이터 없음</div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={s3Data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>

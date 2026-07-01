@@ -78,6 +78,7 @@ const MENU: Category[] = [
           { kind: 'leaf', label: '브랜드별',       to: '/picking/brand' },
           { kind: 'leaf', label: '생산성',         to: '/picking/productivity' },
           { kind: 'leaf', label: '작업자별 상세',  to: '/picking/worker' },
+          { kind: 'leaf', label: '센터별 분석',    to: '/picking/center' },
         ],
       },
       {

@@ -1,17 +1,18 @@
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
+  ResponsiveContainer, CartesianGrid, ComposedChart, Line,
 } from 'recharts'
 import { useState } from 'react'
 import { useAllZoneData } from '../../hooks/useAllZoneData'
-import { periodToRange, dateToWeekStart, weekLabel } from '../../lib/weekUtils'
+import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
+import type { Granularity } from '../../lib/weekUtils'
 import { OWNER_COLOR, OWNERS } from '../../lib/supabase'
 import type { ZoneDaily } from '../../lib/supabase'
 import type { Period } from '../../lib/types'
 import type { Metric } from './Overview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-interface Props { period: Period; metric: Metric }
+interface Props { period: Period; metric: Metric; granularity: Granularity }
 
 const fmtM   = (v: number) => `${v.toFixed(1)}M`
 const fmtNum = (v: number) => v.toLocaleString('ko-KR')
@@ -52,23 +53,23 @@ function aggregateZones(rows: ZoneDaily[]): ZoneRow[] {
   })).sort((a, b) => b.eff - a.eff)
 }
 
-/* ── 주간 추이 (구역별 누적) ── */
-function weeklyTrend(rows: ZoneDaily[], metric: Metric) {
+/* ── 구역별 실적 추이 (전체 데이터 기반, granularity) ── */
+function zoneValueTrend(rows: ZoneDaily[], metric: Metric, gran: Granularity) {
   const scale = metricScale(metric)
   const zonesSet = new Set(rows.map(r => r.zone))
   const zones = [...zonesSet].sort()
   const map = new Map<string, Record<string, number>>()
   for (const r of rows) {
-    const ws = dateToWeekStart(r.work_date)
-    if (!map.has(ws)) map.set(ws, {})
-    const e = map.get(ws)!
-    e[r.zone]  = (e[r.zone]  ?? 0) + metricVal(r, metric) / scale
+    const bucket = dateToBucket(r.work_date, gran)
+    if (!map.has(bucket)) map.set(bucket, {})
+    const e = map.get(bucket)!
+    e[r.zone]   = (e[r.zone]   ?? 0) + metricVal(r, metric) / scale
     e['_total'] = (e['_total'] ?? 0) + metricVal(r, metric) / scale
   }
   const data = [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ws, e]) => ({
-      weekLabel: weekLabel(ws),
+    .map(([bucket, e]) => ({
+      label: bucketLabel(bucket, gran),
       ...Object.fromEntries(zones.map(z => [z, +(e[z] ?? 0).toFixed(2)])),
       total: +(e['_total'] ?? 0).toFixed(2),
     }))
@@ -103,7 +104,7 @@ function ZoneTable({ zones, metric }: { zones: ZoneRow[]; metric: Metric }) {
               <td className="py-2 px-3 font-medium text-gray-700">{z.zone}</td>
               <td className="py-2 px-3 text-right">
                 <span className={[
-                  'inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold',
+                  'inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold',
                   z.eff >= 100 ? 'bg-emerald-50 text-emerald-600'
                     : z.eff >= 80 ? 'bg-orange-50 text-orange-500'
                     : 'bg-red-50 text-red-500',
@@ -139,14 +140,14 @@ function SectionCard({ title, children }: { title: string; children: React.React
 function StatBadge({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</span>
       <span className="text-lg font-bold" style={{ color }}>{value}</span>
     </div>
   )
 }
 
 /* ── 메인 컴포넌트 ── */
-export default function BrandDetail({ period, metric }: Props) {
+export default function BrandDetail({ period, metric, granularity }: Props) {
   const { rows, loading } = useAllZoneData()
   const [selectedOwner, setSelectedOwner] = useState<string>(OWNERS[0])
 
@@ -155,7 +156,7 @@ export default function BrandDetail({ period, metric }: Props) {
       <div className="flex items-center justify-center h-64 text-gray-400">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-letusOrange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[12px]">데이터 로딩 중...</p>
+          <p className="text-xs">데이터 로딩 중...</p>
         </div>
       </div>
     )
@@ -164,8 +165,10 @@ export default function BrandDetail({ period, metric }: Props) {
   const { start, end } = periodToRange(period)
   const pRows = rows.filter(r => r.work_date >= start && r.work_date <= end)
   const ownerRows = pRows.filter(r => r.owner === selectedOwner)
+  /* 추이 차트는 전체 기간 데이터 사용 */
+  const ownerAllRows = rows.filter(r => r.owner === selectedOwner)
 
-  /* 선택 브랜드 KPI */
+  /* 선택 브랜드 KPI — 선택 기간 기준 */
   let totalStd = 0, totalAct = 0, totalBox = 0, totalAmt = 0
   for (const r of ownerRows) {
     totalStd += r.std_time_hr
@@ -177,8 +180,12 @@ export default function BrandDetail({ period, metric }: Props) {
   const unit = metricUnit(metric)
   const isAmt = metric === 'amount'
 
-  const zoneAggs  = aggregateZones(ownerRows)
-  const { data: trendData, zones } = weeklyTrend(ownerRows, metric)
+  /* 구역 집계 — 선택 기간 기준 */
+  const zoneAggs = aggregateZones(ownerRows)
+
+  /* 추이 차트 — 전체 데이터 기반 */
+  const { data: trendData, zones } = zoneValueTrend(ownerAllRows, metric, granularity)
+  const granLabel = granularity === 'week' ? '주간' : '월간'
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -207,10 +214,11 @@ export default function BrandDetail({ period, metric }: Props) {
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-3 h-3 rounded-full" style={{ background: OWNER_COLOR[selectedOwner] }} />
-            <p className="text-[13px] font-bold">{selectedOwner} 요약</p>
+            <p className="text-sm font-semibold">{selectedOwner} 요약</p>
+            <span className="text-xs text-gray-400 ml-1">선택 기간 기준</span>
           </div>
           {ownerRows.length === 0 ? (
-            <p className="text-[12px] text-muted-foreground text-center py-4">선택 기간에 데이터가 없습니다</p>
+            <p className="text-xs text-muted-foreground text-center py-4">선택 기간에 데이터가 없습니다</p>
           ) : (
             <div className="flex gap-8 justify-around">
               <StatBadge
@@ -228,27 +236,27 @@ export default function BrandDetail({ period, metric }: Props) {
         </CardContent>
       </Card>
 
-      {/* 구역별 실적표 + 주간 추이 나란히 */}
+      {/* 구역별 실적표 + 구역별 추이 나란히 */}
       <div className="grid grid-cols-2 gap-5">
 
-        {/* 구역별 실적표 */}
+        {/* 구역별 실적표 (가동률 순, 선택 기간) */}
         <SectionCard title={`${selectedOwner} · 구역별 실적 (가동률 순)`}>
           {zoneAggs.length === 0 ? (
-            <p className="text-[12px] text-gray-300 text-center py-8">데이터 없음</p>
+            <p className="text-xs text-gray-300 text-center py-8">데이터 없음</p>
           ) : (
             <ZoneTable zones={zoneAggs} metric={metric} />
           )}
         </SectionCard>
 
-        {/* 주간 구역별 추이 */}
-        <SectionCard title={`${selectedOwner} · 주간 구역별 추이 (${unit})`}>
+        {/* 구역별 실적 추이 (전체 히스토리) */}
+        <SectionCard title={`${selectedOwner} · ${granLabel} 구역별 추이 (${unit})`}>
           {trendData.length === 0 ? (
-            <p className="text-[12px] text-gray-300 text-center py-8">데이터 없음</p>
+            <p className="text-xs text-gray-300 text-center py-8">데이터 없음</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <ComposedChart data={trendData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="weekLabel" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#6b7280' }}
                   tickFormatter={v => isAmt ? `${v}M` : fmtNum(v)}
@@ -256,8 +264,8 @@ export default function BrandDetail({ period, metric }: Props) {
                 <Tooltip
                   formatter={(v: number, name: string) =>
                     name === 'total'
-                      ? [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '' : ''}`, '합계']
-                      : [`${isAmt ? fmtM(v) : fmtNum(v)}${isAmt ? '' : ''}`, name]
+                      ? [`${isAmt ? fmtM(v) : fmtNum(v)}`, '합계']
+                      : [`${isAmt ? fmtM(v) : fmtNum(v)}`, name]
                   }
                   contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                 />

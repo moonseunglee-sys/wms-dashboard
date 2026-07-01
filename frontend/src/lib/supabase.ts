@@ -45,3 +45,24 @@ export const OWNER_COLOR: Record<string, string> = {
 
 export const OWNERS = ['퍼시스', '일룸', '데스커', '3PL'] as const
 export type Owner = typeof OWNERS[number]
+
+/* ── 센터 매핑 ─────────────────────────────────── */
+export const CENTER_OWNER: Record<string, string> = {
+  '퍼시스': '1센터',
+  '일룸':   '1센터',
+  '데스커': '2센터',
+  '3PL':   '3센터',
+}
+export const CENTERS = ['1센터', '2센터', '3센터'] as const
+export type Center = typeof CENTERS[number]
+
+export const CENTER_OWNERS: Record<string, string[]> = {
+  '1센터': ['퍼시스', '일룸'],
+  '2센터': ['데스커'],
+  '3센터': ['3PL'],
+}
+export const CENTER_COLOR: Record<string, string> = {
+  '1센터': '#3B82F6',
+  '2센터': '#10B981',
+  '3센터': '#F97316',
+}

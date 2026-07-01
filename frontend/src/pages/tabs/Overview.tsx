@@ -116,7 +116,7 @@ function SvgDonutChart({
 
   return (
     <svg width={size} height={size} className="shrink-0">
-      {/* 세그먼트 */}
+      {/* 세그먼트: transform rotate로 시작 각도 지정 → 음수 dashoffset 없이 정확한 위치 */}
       {sum > 0 && arcs.map((arc, i) => (
         <circle
           key={i}
@@ -126,7 +126,8 @@ function SvgDonutChart({
           strokeWidth={thickness}
           strokeLinecap="round"
           strokeDasharray={`${arc.arcLen} ${C}`}
-          strokeDashoffset={C / 4 - arc.start * C}
+          strokeDashoffset={0}
+          transform={`rotate(${arc.start * 360 - 90}, ${cx}, ${cy})`}
           className={onSegmentClick ? 'cursor-pointer transition-opacity hover:opacity-75' : ''}
           onClick={() => onSegmentClick?.(arc.name)}
         />

@@ -36,15 +36,15 @@ function effBadge(eff: number) {
 
 interface KpiResult {
   amount: number; box: number
-  std: number;    act: number
+  std: number;    act: number; wms: number
   zones: number
   eff: number
-  amtPerHr: number
-  boxPerHr: number
+  amtPerHr: number;    boxPerHr: number
+  amtPerHrWms: number | null; boxPerHrWms: number | null
 }
 
 function aggregateKpi(rows: ZoneDaily[]): KpiResult {
-  let amount = 0, box = 0, std = 0, act = 0
+  let amount = 0, box = 0, std = 0, act = 0, wms = 0, wmsAmt = 0, wmsBox = 0
   const zoneSet = new Set<string>()
   for (const r of rows) {
     amount += r.pick_amount ?? 0
@@ -52,15 +52,21 @@ function aggregateKpi(rows: ZoneDaily[]): KpiResult {
     std    += r.std_time_hr
     act    += r.act_time_hr
     zoneSet.add(r.zone)
+    if (r.wms_time_hr != null && r.wms_time_hr > 0) {
+      wms    += r.wms_time_hr
+      wmsAmt += r.pick_amount ?? 0
+      wmsBox += r.pick_box    ?? 0
+    }
   }
   return {
     amount: amount / 1_000_000,
-    box,
-    std, act,
+    box, std, act, wms,
     zones: zoneSet.size,
-    eff:       act > 0 ? (std / act) * 100 : 0,
-    amtPerHr:  act > 0 ? (amount / 1_000_000) / act : 0,
-    boxPerHr:  act > 0 ? box / act : 0,
+    eff:            act > 0 ? (std / act) * 100 : 0,
+    amtPerHr:       act > 0 ? (amount / 1_000_000) / act : 0,
+    boxPerHr:       act > 0 ? box / act : 0,
+    amtPerHrWms:    wms > 0 ? (wmsAmt / 1_000_000) / wms : null,
+    boxPerHrWms:    wms > 0 ? wmsBox / wms : null,
   }
 }
 
@@ -244,10 +250,16 @@ function CenterCard({ center, kpi, metric, onClick }: {
           <div className="bg-gray-50 rounded-lg px-3 py-2">
             <p className="text-[10px] text-gray-400 mb-0.5">시간당 금액</p>
             <p className="text-sm font-semibold text-gray-700">{fmtM(kpi.amtPerHr)}/h</p>
+            {kpi.amtPerHrWms != null && (
+              <p className="text-[10px] text-gray-400 mt-0.5">WMS {fmtM(kpi.amtPerHrWms)}/h</p>
+            )}
           </div>
           <div className="bg-gray-50 rounded-lg px-3 py-2">
             <p className="text-[10px] text-gray-400 mb-0.5">시간당 박스</p>
             <p className="text-sm font-semibold text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}박스/h</p>
+            {kpi.boxPerHrWms != null && (
+              <p className="text-[10px] text-gray-400 mt-0.5">WMS {fmtNum(Math.round(kpi.boxPerHrWms))}박스/h</p>
+            )}
           </div>
         </div>
         <div className="flex gap-4 mt-3 text-xs text-gray-400">
@@ -294,13 +306,23 @@ function OwnerCard({ owner, kpi, metric, onClick }: {
           {isAmt ? fmtM(kpi.amount) : fmtBox(kpi.box)}
         </p>
         <div className="space-y-1 text-xs">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-start">
             <span className="text-gray-400">시간당 금액</span>
-            <span className="font-medium text-gray-700">{fmtM(kpi.amtPerHr)}/h</span>
+            <div className="text-right">
+              <span className="font-medium text-gray-700">{fmtM(kpi.amtPerHr)}/h</span>
+              {kpi.amtPerHrWms != null && (
+                <span className="block text-[10px] text-gray-400">WMS {fmtM(kpi.amtPerHrWms)}/h</span>
+              )}
+            </div>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-start">
             <span className="text-gray-400">시간당 박스</span>
-            <span className="font-medium text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}박스/h</span>
+            <div className="text-right">
+              <span className="font-medium text-gray-700">{fmtNum(Math.round(kpi.boxPerHr))}박스/h</span>
+              {kpi.boxPerHrWms != null && (
+                <span className="block text-[10px] text-gray-400">WMS {fmtNum(Math.round(kpi.boxPerHrWms))}박스/h</span>
+              )}
+            </div>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">표준/실적</span>
@@ -400,12 +422,29 @@ export default function Overview({ period, metric, granularity }: Props) {
           sub={total.eff >= 100 ? '목표 달성' : `목표까지 ${(100 - total.eff).toFixed(1)}%p`}
           color={effColor(total.eff)}
         />
-        <KpiCard
-          label="시간당 피킹금액"
-          value={`${fmtM(total.amtPerHr)}/h`}
-          sub={`${fmtNum(Math.round(total.boxPerHr))}박스/h`}
-          color="#0ea5e9"
-        />
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground font-medium mb-3">시간당 피킹 생산성</p>
+            <div className="space-y-2.5">
+              <div>
+                <p className="text-[10px] text-muted-foreground mb-0.5">실적기준</p>
+                <p className="text-xl font-bold text-sky-500 leading-none">
+                  {fmtM(total.amtPerHr)}/h
+                  <span className="text-sm font-medium text-muted-foreground ml-2">· {fmtNum(Math.round(total.boxPerHr))}박스/h</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground mb-0.5">WMS기준</p>
+                <p className="text-xl font-bold text-sky-300 leading-none">
+                  {total.amtPerHrWms != null ? `${fmtM(total.amtPerHrWms)}/h` : '-'}
+                  <span className="text-sm font-medium text-muted-foreground ml-2">
+                    · {total.boxPerHrWms != null ? `${fmtNum(Math.round(total.boxPerHrWms))}박스/h` : '-'}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ── 비중 분석 (도넛) ── */}

@@ -1,0 +1,41 @@
+[
+  {
+    "work_date": "2026-07-05",
+    "center": "양지3센터",
+    "owner": "3PL",
+    "zone": "W",
+    "worker_name": "박성범",
+    "shift": "주간",
+    "std_time_hr": 0.420258,
+    "act_time_hr": 0.431325,
+    "pick_amount": 1376000.0,
+    "pick_box": 14,
+    "wms_time_hr": 0.87
+  },
+  {
+    "work_date": "2026-07-05",
+    "center": "양지3센터",
+    "owner": "3PL",
+    "zone": "R",
+    "worker_name": "고윤석",
+    "shift": "주간",
+    "std_time_hr": 1.117281,
+    "act_time_hr": 1.175258,
+    "pick_amount": 13299560.0,
+    "pick_box": 23,
+    "wms_time_hr": 1.7519
+  },
+  {
+    "work_date": "2026-07-05",
+    "center": "양지3센터",
+    "owner": "3PL",
+    "zone": "R",
+    "worker_name": "박성범",
+    "shift": "주간",
+    "std_time_hr": 0.058525,
+    "act_time_hr": 0.072597,
+    "pick_amount": 399000.0,
+    "pick_box": 2,
+    "wms_time_hr": 0.0797
+  }
+]

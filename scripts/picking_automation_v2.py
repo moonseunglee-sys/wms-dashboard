@@ -458,21 +458,28 @@ def _filter_d1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
     """데스커: 주간 + 야간, Y-REC 제외.
 
     파일명 종료 날짜(_NNDD)로 야간 윈도우 동적 결정 — _i1_d1_window 참조.
-    야간 조:
+    주간/야간 판단:
+    - [주간] 태그: day_start 이후 시간 제한 없이 주간으로 포함
+      (22시까지 wave 연장 케이스 처리 — 퇴근 전 wave 완료까지 주간 귀속)
     - [야간] 태그: night_start - 1h(20:00)부터 허용 (얼리스타트)
-    - [주간] 등 태그 없음: night_start(21:00) 이후라면 야간 연장으로 인정
-      (WMS에서 [야간] 태그 없이 21시 이후 작업이 기록되는 경우 포함)
+    - 무태그: night_start(21:00) 이후라면 야간 연장으로 인정
     """
     day_start, day_end, night_start, night_end = _i1_d1_window(t, raw_path)
     night_start_early = night_start - pd.Timedelta(hours=1)
     no_yrec = ~df["LOCATION"].astype(str).str.upper().str.startswith("Y-REC")
     is_night_tag = df["작업자"].astype(str).str.match(r"^\[야간\]")
-    # 주간: 시간대 내에서 [야간] 태그가 없으면 포함
-    mask_day = df["작업일시"].between(day_start, day_end) & ~is_night_tag
-    # 야간: [야간] 태그는 얼리스타트(20:00)부터, 무태그는 21:00부터 포함
+    is_day_tag   = df["작업자"].astype(str).str.match(r"^\[주간\]")
+    # [주간] 태그는 당일 23:59까지 허용 (22시 연장 wave 처리); 무태그는 day_end(20:59)까지
+    day_tag_end  = pd.Timestamp(t).replace(hour=23, minute=59, second=59)
+    # 주간: [주간] 태그는 day_start~23:59 / 무태그는 day_start~day_end(20:59)
+    mask_day = (
+        (df["작업일시"].between(day_start, day_end) & ~is_night_tag) |
+        (df["작업일시"].between(day_start, day_tag_end) & is_day_tag)
+    )
+    # 야간: [야간] 태그는 얼리스타트(20:00)부터, 무태그(비[주간])는 21:00부터
     mask_night = (
         (df["작업일시"].between(night_start_early, night_end) & is_night_tag) |
-        (df["작업일시"].between(night_start, night_end) & ~is_night_tag)
+        (df["작업일시"].between(night_start, night_end) & ~is_night_tag & ~is_day_tag)
     )
     return df[(mask_day | mask_night) & no_yrec].copy()
 

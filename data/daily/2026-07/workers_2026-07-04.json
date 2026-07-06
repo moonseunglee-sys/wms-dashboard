@@ -968,11 +968,11 @@
     "zone": "M-N",
     "worker_name": "[야간]김봉균",
     "shift": "야간",
-    "std_time_hr": 2.637542,
-    "act_time_hr": 8.115486,
-    "pick_amount": 23269400.0,
-    "pick_box": 410,
-    "wms_time_hr": 9.0725
+    "std_time_hr": 2.794794,
+    "act_time_hr": 8.310011,
+    "pick_amount": 23641200.0,
+    "pick_box": 419,
+    "wms_time_hr": 10.8397
   },
   {
     "work_date": "2026-07-04",
@@ -981,11 +981,11 @@
     "zone": "M-N",
     "worker_name": "[야간]김시훈",
     "shift": "야간",
-    "std_time_hr": 4.76895,
-    "act_time_hr": 8.852433,
-    "pick_amount": 29757700.0,
-    "pick_box": 548,
-    "wms_time_hr": 10.2219
+    "std_time_hr": 5.123414,
+    "act_time_hr": 9.209114,
+    "pick_amount": 30968700.0,
+    "pick_box": 571,
+    "wms_time_hr": 10.6194
   },
   {
     "work_date": "2026-07-04",
@@ -994,7 +994,7 @@
     "zone": "M-N",
     "worker_name": "[야간]박찬우",
     "shift": "야간",
-    "std_time_hr": 3.506078,
+    "std_time_hr": 3.512883,
     "act_time_hr": 7.323422,
     "pick_amount": 25260200.0,
     "pick_box": 472,

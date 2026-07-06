@@ -462,10 +462,14 @@ def _filter_d1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
     - [주간] 태그: day_start 이후 시간 제한 없이 주간으로 포함
       (22시까지 wave 연장 케이스 처리 — 퇴근 전 wave 완료까지 주간 귀속)
     - [야간] 태그: night_start - 1h(20:00)부터 허용 (얼리스타트)
+                  night_end(08:00) 이후여도 09:00 이전이면 전날 야간 귀속
+                  (마무리 wave가 08시를 넘겨도 야간 작업자라면 전날 실적)
     - 무태그: night_start(21:00) 이후라면 야간 연장으로 인정
     """
     day_start, day_end, night_start, night_end = _i1_d1_window(t, raw_path)
     night_start_early = night_start - pd.Timedelta(hours=1)
+    # [야간] 태그 전용 야간 종료: 09:00 이전까지 전날 야간으로 처리
+    night_end_tag = pd.Timestamp(night_end).replace(hour=9, minute=0, second=0)
     no_yrec = ~df["LOCATION"].astype(str).str.upper().str.startswith("Y-REC")
     is_night_tag = df["작업자"].astype(str).str.match(r"^\[야간\]")
     is_day_tag   = df["작업자"].astype(str).str.match(r"^\[주간\]")
@@ -476,9 +480,9 @@ def _filter_d1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
         (df["작업일시"].between(day_start, day_end) & ~is_night_tag) |
         (df["작업일시"].between(day_start, day_tag_end) & is_day_tag)
     )
-    # 야간: [야간] 태그는 얼리스타트(20:00)부터, 무태그(비[주간])는 21:00부터
+    # 야간: [야간] 태그는 얼리스타트(20:00)~09:00 / 무태그(비[주간])는 21:00~08:00
     mask_night = (
-        (df["작업일시"].between(night_start_early, night_end) & is_night_tag) |
+        (df["작업일시"].between(night_start_early, night_end_tag) & is_night_tag) |
         (df["작업일시"].between(night_start, night_end) & ~is_night_tag & ~is_day_tag)
     )
     return df[(mask_day | mask_night) & no_yrec].copy()

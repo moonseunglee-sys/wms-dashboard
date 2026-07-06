@@ -103,11 +103,11 @@
     "center": "양지2센터",
     "owner": "데스커",
     "zone": "M-N",
-    "std_time_hr": 40.406561,
-    "act_time_hr": 74.047906,
-    "pick_amount": 304420800.0,
-    "pick_box": 5123,
-    "wms_time_hr": 87.5103
+    "std_time_hr": 40.925083,
+    "act_time_hr": 74.599111,
+    "pick_amount": 306003600.0,
+    "pick_box": 5155,
+    "wms_time_hr": 89.675
   },
   {
     "work_date": "2026-07-04",

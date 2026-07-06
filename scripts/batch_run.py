@@ -22,8 +22,9 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-TEMP_DIR = BASE_DIR / "data/temp"
+BASE_DIR  = Path(__file__).resolve().parent.parent
+TEMP_DIR  = BASE_DIR / "data/temp"
+DAILY_DIR = BASE_DIR / "data/daily"
 
 
 def date_range(start: date, end: date):
@@ -39,6 +40,18 @@ def existing_dates(start: date, end: date) -> list[date]:
         d for d in date_range(start, end)
         if (TEMP_DIR / f"zones_{d}.json").exists()
     ]
+
+
+def archive_daily(d: date) -> None:
+    """zones/workers JSON을 data/daily/YYYY-MM/ 에 복사"""
+    import shutil
+    dest_dir = DAILY_DIR / d.strftime("%Y-%m")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for prefix in ("zones", "workers", "result"):
+        src = TEMP_DIR / f"{prefix}_{d}.json"
+        if src.exists():
+            shutil.copy2(src, dest_dir / src.name)
+    print(f"  [아카이브] {d} → data/daily/{d.strftime('%Y-%m')}/")
 
 
 def run_one(d: date, from_master: bool, skip_db: bool) -> bool:
@@ -58,6 +71,9 @@ def run_one(d: date, from_master: bool, skip_db: bool) -> bool:
         print(f"  [FAIL] {date_str}  자동화 오류 (exit={ret.returncode}, {elapsed:.0f}s)")
         return False
     print(f"  [자동화 완료] {date_str}  ({elapsed:.0f}s)")
+
+    # ── 아카이브 ─────────────────────────────────────────────────
+    archive_daily(d)
 
     # ── DB 적재 ─────────────────────────────────────────────────
     if not skip_db:

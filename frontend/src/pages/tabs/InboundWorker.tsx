@@ -103,6 +103,7 @@ export default function InboundWorker({ period }: Props) {
                   <th className="text-right py-2.5 font-medium">파렛트</th>
                   <th className="text-right py-2.5 font-medium">실적시간</th>
                   <th className="text-right py-2.5 font-medium">시간당 수량</th>
+                  <th className="text-right py-2.5 font-medium">시간당 파렛트</th>
                   <th className="text-right py-2.5 pr-5 font-medium">시간당 금액</th>
                 </tr>
               </thead>
@@ -138,12 +139,13 @@ export default function InboundWorker({ period }: Props) {
                         <td className="text-right text-gray-700">{fmtNum(w.agg.pallets)}</td>
                         <td className="text-right text-gray-700">{fmtHr(w.agg.hours)}</td>
                         <td className="text-right font-semibold text-gray-800">{fmtNum(Math.round(w.agg.qtyPerHr))}개/h</td>
+                        <td className="text-right font-semibold text-gray-800">{w.agg.palletPerHr.toFixed(1)}plt/h</td>
                         <td className="text-right pr-5 font-semibold text-gray-800">{fmtM(w.agg.amtPerHr)}/h</td>
                       </tr>
 
                       {open && (
                         <tr className="border-b border-gray-100 bg-gray-50/40">
-                          <td colSpan={8} className="px-5 py-4">
+                          <td colSpan={9} className="px-5 py-4">
                             <div className="grid grid-cols-2 gap-6">
                               {/* 유형 분해 (정산 기준) */}
                               <div>
@@ -190,22 +192,29 @@ export default function InboundWorker({ period }: Props) {
                                       <th className="text-left  py-1.5 font-medium">날짜</th>
                                       <th className="text-right py-1.5 font-medium">수량</th>
                                       <th className="text-right py-1.5 font-medium">금액</th>
+                                      <th className="text-right py-1.5 font-medium">파렛트</th>
                                       <th className="text-right py-1.5 font-medium">시간</th>
                                       <th className="text-right py-1.5 font-medium">시간당 수량</th>
+                                      <th className="text-right py-1.5 font-medium">시간당 파렛트</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {w.list.map(d => {
                                       const hrs = Number(d.hours) || 0
                                       const q   = Number(d.qty_total) || 0
+                                      const plt = Number(d.pallets) || 0
                                       return (
                                         <tr key={d.work_date} className="border-b border-gray-100">
                                           <td className="py-1.5 text-gray-600">{d.work_date}</td>
                                           <td className="text-right text-gray-700">{fmtNum(q)}</td>
                                           <td className="text-right text-gray-700">{fmtM((Number(d.amt_total) || 0) / 1_000_000)}</td>
+                                          <td className="text-right text-gray-700">{fmtNum(plt)}</td>
                                           <td className="text-right text-gray-700">{fmtHr(hrs)}</td>
                                           <td className="text-right font-semibold text-gray-700">
                                             {hrs > 0 ? `${fmtNum(Math.round(q / hrs))}개/h` : '-'}
+                                          </td>
+                                          <td className="text-right font-semibold text-gray-700">
+                                            {hrs > 0 ? `${(plt / hrs).toFixed(1)}plt/h` : '-'}
                                           </td>
                                         </tr>
                                       )

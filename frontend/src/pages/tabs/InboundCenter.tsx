@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, CartesianGrid,
@@ -23,6 +23,7 @@ interface Props { period: Period; metric: InboundMetric; granularity?: Granulari
 export default function InboundCenter({ period, metric, granularity = 'day' }: Props) {
   const { rows, loading } = useAllInboundData()
   const location = useLocation()
+  const navigate = useNavigate()
   const [selected, setSelected] = useState<string>(
     (location.state as { center?: string } | null)?.center ?? '1센터'
   )
@@ -152,7 +153,11 @@ export default function InboundCenter({ period, metric, granularity = 'day' }: P
                 </thead>
                 <tbody>
                   {brandAggs.map(({ brand, agg }) => (
-                    <tr key={brand} className="border-b border-gray-50">
+                    <tr
+                      key={brand}
+                      className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => navigate('/inbound/brand', { state: { owner: brand } })}
+                    >
                       <td className="py-2.5">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full" style={{ background: OWNER_COLOR[brand] }} />

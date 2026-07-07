@@ -256,6 +256,7 @@ export default function InboundBrand({ period, metric, granularity = 'day' }: Pr
                   <th className="text-right py-2 font-medium">파렛트</th>
                   <th className="text-right py-2 font-medium">실적시간</th>
                   <th className="text-right py-2 font-medium">시간당 수량</th>
+                  <th className="text-right py-2 font-medium">시간당 파렛트</th>
                   <th className="text-right py-2 font-medium">시간당 금액</th>
                 </tr>
               </thead>
@@ -273,6 +274,7 @@ export default function InboundBrand({ period, metric, granularity = 'day' }: Pr
                     <td className="text-right text-gray-700">{fmtNum(w.pallets)}</td>
                     <td className="text-right text-gray-700">{fmtHr(w.hours)}</td>
                     <td className="text-right font-semibold text-gray-800">{fmtNum(Math.round(w.qtyPerHr))}개/h</td>
+                    <td className="text-right font-semibold text-gray-800">{w.palletPerHr.toFixed(1)}plt/h</td>
                     <td className="text-right font-semibold text-gray-800">{fmtM(w.amtPerHr)}/h</td>
                   </tr>
                 ))}

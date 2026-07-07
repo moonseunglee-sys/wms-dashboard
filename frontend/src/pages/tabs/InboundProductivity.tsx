@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useAllInboundData } from '../../hooks/useAllInboundData'
 import { periodToRange, dateToBucket, bucketLabel } from '../../lib/weekUtils'
 import type { Granularity } from '../../lib/weekUtils'
@@ -13,6 +14,7 @@ interface Props { period: Period; metric: InboundMetric; granularity?: Granulari
 
 export default function InboundProductivity({ period, metric, granularity = 'day' }: Props) {
   const { rows, loading } = useAllInboundData()
+  const navigate = useNavigate()
 
   if (loading) {
     return (
@@ -144,7 +146,11 @@ export default function InboundProductivity({ period, metric, granularity = 'day
                 const a = brandTotal[o]
                 if (a.hours === 0 && a.qty === 0) return null
                 return (
-                  <tr key={o} className="border-b border-gray-50">
+                  <tr
+                    key={o}
+                    className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => navigate('/inbound/brand', { state: { owner: o } })}
+                  >
                     <td className="py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full" style={{ background: OWNER_COLOR[o] }} />

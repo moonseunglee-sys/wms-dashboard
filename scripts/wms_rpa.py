@@ -8,11 +8,16 @@ WMS 데이터 수집 RPA (피킹 + 입고/이동)
 3. 브랜드별 PALLET HISTORY 다운로드 → data/raw/YYYY/MM/ 저장 (피킹)
 4. 브랜드별 ITEM HISTORY(적치+이동) 다운로드 → data/raw/2026_입고/MM/ 저장 (입고)
 
+브랜드별 owner 필터 (2026-07-07 확정, warehouseId와 함께 적용):
+  - 일룸  (YA): owner=[T60I01,T60I03] 일룸+슬로우베드   ※ YA엔 퍼시스도 있어 owner로 갈라야 함
+  - 퍼시스(YA): owner=[T60F01,T60P01,T60P02] 퍼시스+시디즈+알로소
+  - 데스커(Y2): owner 필터 없음(전체) ※ Y2는 데스커 전용 창고라 필터 불필요
+  - 3PL  (Y3): owner 필터 없음(전체) ※ Y3는 3PL 전용 창고라 필터 불필요
+    (3PL 원본에 그룹사 물량이 섞여 나올 수 있음 — 이후 자동화 단계의 exclude_owners/_3PL_EXCL이 제거)
+
 파일명/날짜 범위 (피킹, PALLET HISTORY):
-  - 일룸  (T60I01+T60I03, 야간 있음): 일룸_{MMDD}_{END}.xlsx   date_from=target, date_to=next_weekday
-  - 데스커(T60I02,        야간 있음): 데스커_{MMDD}_{END}.xlsx  date_from=target, date_to=next_weekday
-  - 퍼시스(T60F01,        주간 전용): 퍼시스_{MMDD}.xlsx        date_from=date_to=target
-  - 3PL  (그룹사 제외 전체 active owner): 3PL_{MMDD}.xlsx       date_from=date_to=target
+  - 일룸/데스커(야간 있음): {브랜드}_{MMDD}_{END}.xlsx   date_from=target, date_to=next_weekday
+  - 퍼시스/3PL (주간 전용): {브랜드}_{MMDD}.xlsx          date_from=date_to=target
 
 next_weekday 규칙 (피킹 전용 — 입고/이동은 항상 단일일):
   평일  target → target+1일 (다음날)
@@ -22,7 +27,6 @@ next_weekday 규칙 (피킹 전용 — 입고/이동은 항상 단일일):
 파일명 (입고/이동, ITEM HISTORY — 브랜드 무관 항상 단일일 target 기준):
   - 입고_{브랜드}_{MMDD}.xlsx  (WMS "실적관리 > ITEM HISTORY > 입하/적치실적" 탭과 동일 데이터)
   - 이동_{브랜드}_{MMDD}.xlsx  (같은 화면 "이동" 탭과 동일 데이터)
-  브랜드 그룹은 피킹과 동일: 일룸(T60I01+T60I03), 데스커(T60I02), 퍼시스(T60F01), 3PL(그룹사 제외 전체)
 
 다음 단계 (수동 또는 별도 트리거):
   python scripts/batch_run.py --dates YYYY-MM-DD           (피킹)
@@ -65,15 +69,19 @@ WMS_PW       = os.getenv("WMS_PW", "")
 SUPABASE_DB_URL = os.getenv("SUPABASE_POOLER_URL") or os.getenv("SUPABASE_DB_URL", "")
 
 # ── Owner ID (WMS /v1/master/owner/list 기준) ───────────────────────────
+# 사용자 확정(2026-07-07): 창고가 브랜드 전용이면 owner 필터 없이 "전체" 조회
+# (데스커=Y2, 3PL=Y3는 그 창고에 다른 그룹사가 안 들어오므로 필터 불필요.
+#  반대로 YA(양지1)는 일룸/퍼시스가 같이 있어 owner로 반드시 갈라야 함)
+#
 # 야간 있음 → 2일치(평일) / 3일치(토) 다운로드
 NIGHT_BRANDS = {
-    "일룸":   ["T60I01", "T60I03"],  # 일룸 + 슬로우베드
-    "데스커": ["T60I02"],
+    "일룸":   ["T60I01", "T60I03"],  # 일룸 + 슬로우베드 (YA, 필터 필요)
+    "데스커": [],                     # Y2 전체 (필터 불필요)
 }
-# 주간 전용 → 단일 날짜 다운로드 (3PL은 owner_ids=None → 런타임 동적 조회)
+# 주간 전용 → 단일 날짜 다운로드
 DAY_BRANDS = {
-    "퍼시스": ["T60F01"],
-    "3PL":    None,
+    "퍼시스": ["T60F01", "T60P01", "T60P02"],  # 퍼시스 + 시디즈 + 알로소 (YA, 필터 필요)
+    "3PL":    [],                               # Y3 전체 (필터 불필요)
 }
 
 # 브랜드별 물리 창고 (WMS 로그인 화면 창고선택 드롭다운 기준)
@@ -85,15 +93,6 @@ BRAND_WAREHOUSE = {
     "데스커": "Y2",
     "3PL":    "Y3",
 }
-
-# 그룹사 owner IDs (고정) — 런타임에 전체 owner 목록에서 이걸 제외한 나머지 = 3PL
-# 화주사가 추가되어도 이 목록만 유지하면 자동으로 포함됨
-_GROUP_OWNERS = frozenset({
-    "T60I01", "T60I02", "T60I03",   # 일룸, 데스커, 슬로우베드
-    "T60F01",                        # 퍼시스
-    "T60P01", "T60P02",              # 시디즈, 알로소
-    "T60T01",                        # 팀스
-})
 
 
 # ── 날짜 헬퍼 ──────────────────────────────────────────────────────────
@@ -263,16 +262,6 @@ def build_owner_name_map(owners: list) -> dict:
     return {o["ownerId"]: o["ownerNm"] for o in owners}
 
 
-def fetch_3pl_owner_ids(owners: list) -> list:
-    """전체 owner 목록에서 그룹사(_GROUP_OWNERS) 제외 활성 owner IDs 반환"""
-    ids = [
-        o["ownerId"] for o in owners
-        if o.get("isUse") and o["ownerId"] not in _GROUP_OWNERS
-    ]
-    print(f"  3PL owner: {len(ids)}개 (그룹사 {len(_GROUP_OWNERS)}개 제외)")
-    return ids
-
-
 _PALLET_COLS = ["작업자", "WAVE명", "WAVE번호", "PLT ID", "오더번호", "ITEM ID",
                 "피킹수량", "LOCATION", "작업일시", "OWNER"]
 
@@ -294,7 +283,12 @@ def _build_pallet_df(rows: list, owner_map: dict):
         "작업일시": r.get("fstSysDt"),
         "OWNER": owner_map.get(r.get("ownerId"), r.get("ownerId")),
     } for r in rows]
-    return pd.DataFrame(recs, columns=_PALLET_COLS)
+    df = pd.DataFrame(recs, columns=_PALLET_COLS)
+    # 작업일시 오름차순 정렬 — KGA 변환수식의 기준일(P1)이 "파일 첫 행의 날짜"로 잡히므로
+    # 첫 행이 반드시 대상일이 되도록 보장 (행 순서가 뒤섞이면 ㈜ 부여·야식차감이 통째로 틀어짐, 2026-07-08 규명)
+    if len(df):
+        df = df.sort_values("작업일시", kind="stable").reset_index(drop=True)
+    return df
 
 
 def fetch_pallet_history(session: requests.Session, owner_ids: list,
@@ -313,7 +307,7 @@ def fetch_pallet_history(session: requests.Session, owner_ids: list,
     return _build_pallet_df(resp.json(), owner_map)
 
 
-def download_all(session: requests.Session, target: date, owner_3pl_ids: list, owner_map: dict) -> dict:
+def download_all(session: requests.Session, target: date, owner_map: dict) -> dict:
     """전체 브랜드 PALLET HISTORY 다운로드. 반환: {brand: Path}"""
     save_dir = DATA_DIR / target.strftime("%Y/%m")
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -324,9 +318,6 @@ def download_all(session: requests.Session, target: date, owner_3pl_ids: list, o
     print(f"\n피킹 데이터 다운로드 (target={target}) ...")
 
     for brand, owner_ids in all_brands.items():
-        if owner_ids is None:   # 3PL
-            owner_ids = owner_3pl_ids
-
         d_from, d_to, fname = get_file_spec(brand, target)
         day_label = f"{d_from.strftime('%m/%d')}~{d_to.strftime('%m/%d')}" \
                     if d_from != d_to else d_from.strftime('%m/%d')
@@ -413,8 +404,7 @@ def _build_move_df(rows: list, owner_map: dict):
     return pd.DataFrame(recs, columns=_MOVE_COLS)
 
 
-def download_inbound_move(session: requests.Session, target: date,
-                          owner_map: dict, owner_3pl_ids: list) -> dict:
+def download_inbound_move(session: requests.Session, target: date, owner_map: dict) -> dict:
     """브랜드별 입고_/이동_ raw 다운로드. 반환: {"입고_<brand>"|"이동_<brand>": Path}"""
     save_dir = INBOUND_RAW_DIR / target.strftime("%m")
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -426,9 +416,6 @@ def download_inbound_move(session: requests.Session, target: date,
     print(f"\n입고/이동 데이터 다운로드 (target={target}) ...")
 
     for brand, owner_ids in all_brands.items():
-        if owner_ids is None:   # 3PL
-            owner_ids = owner_3pl_ids
-
         print(f"  [{brand}] {mmdd} 수집 중...")
         try:
             data = fetch_item_history(session, owner_ids, target, BRAND_WAREHOUSE[brand])
@@ -497,15 +484,14 @@ async def main():
     try:
         update_workers(session, conn, today_str)
 
-        owners        = fetch_owner_list(session)
-        owner_map     = build_owner_name_map(owners)
-        owner_3pl_ids = fetch_3pl_owner_ids(owners)
+        owners    = fetch_owner_list(session)
+        owner_map = build_owner_name_map(owners)
 
-        downloaded = download_all(session, target, owner_3pl_ids, owner_map)
+        downloaded = download_all(session, target, owner_map)
 
         if not args.skip_inbound:
             downloaded.update(
-                download_inbound_move(session, target, owner_map, owner_3pl_ids)
+                download_inbound_move(session, target, owner_map)
             )
     except Exception as e:
         import traceback

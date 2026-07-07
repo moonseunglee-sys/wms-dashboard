@@ -16,10 +16,10 @@
     "owner": "일룸",
     "zone": "C-D",
     "std_time_hr": 29.307117,
-    "act_time_hr": 43.520961,
+    "act_time_hr": 43.520683,
     "pick_amount": 121747470.0,
     "pick_box": 2446,
-    "wms_time_hr": 66.4408
+    "wms_time_hr": 65.6075
   },
   {
     "work_date": "2026-07-06",
@@ -27,10 +27,10 @@
     "owner": "일룸",
     "zone": "A-P",
     "std_time_hr": 14.498414,
-    "act_time_hr": 23.059247,
+    "act_time_hr": 22.059247,
     "pick_amount": 96112810.0,
     "pick_box": 1028,
-    "wms_time_hr": 43.0831
+    "wms_time_hr": 42.0831
   },
   {
     "work_date": "2026-07-06",
@@ -38,7 +38,7 @@
     "owner": "일룸",
     "zone": "DPS",
     "std_time_hr": 36.692833,
-    "act_time_hr": 35.355444,
+    "act_time_hr": 35.364611,
     "pick_amount": 14297450.0,
     "pick_box": 1132,
     "wms_time_hr": 0.0073

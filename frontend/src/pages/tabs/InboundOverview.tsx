@@ -15,6 +15,7 @@ import type { Period } from '../../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartTooltip } from '@/components/ChartTooltip'
 import type { InboundMetric } from '../inbound/InboundLayout'
+import { exportInboundExcel } from '../../lib/exportInboundExcel'
 
 interface Props { period: Period; metric: InboundMetric; granularity?: Granularity }
 
@@ -371,8 +372,29 @@ export default function InboundOverview({ period, metric, granularity = 'month' 
   const goToBrand  = (owner: string)   => navigate('/inbound/brand',  { state: { owner } })
   const goToCenter = (center?: string) => navigate('/inbound/center', { state: { center } })
 
+  function handleExport() {
+    const filename = `입고실적_${start}_${end}.xlsx`
+    exportInboundExcel(pRows, filename)
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
+
+      {/* ── 엑셀 내보내기 ── */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleExport}
+          disabled={pRows.length === 0}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium
+            bg-emerald-50 text-emerald-600 border border-emerald-200
+            hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M2 2.5A.5.5 0 0 1 2.5 2h8a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 .146.354v10a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 2 14V2.5zm1 .5v10h9V4.5h-1.5A.5.5 0 0 1 10 4V2.5L3 3zm4.5 5.854a.5.5 0 0 0 1 0V6.707l.646.647a.5.5 0 1 0 .708-.708l-1.5-1.5a.5.5 0 0 0-.708 0l-1.5 1.5a.5.5 0 1 0 .708.708L7.5 6.707V9.354z"/>
+          </svg>
+          엑셀 내보내기
+        </button>
+      </div>
 
       {/* ── 전체 KPI ── */}
       <div className="grid grid-cols-4 gap-4">

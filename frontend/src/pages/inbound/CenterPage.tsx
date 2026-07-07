@@ -1,5 +1,8 @@
-import InboundPlaceholder from './Placeholder'
+import { useOutletContext } from 'react-router-dom'
+import InboundCenter from '../tabs/InboundCenter'
+import type { InboundCtx } from './InboundLayout'
 
 export default function CenterPage() {
-  return <InboundPlaceholder label="센터별 분석" />
+  const { period, metric, granularity } = useOutletContext<InboundCtx>()
+  return <InboundCenter period={period} metric={metric} granularity={granularity} />
 }

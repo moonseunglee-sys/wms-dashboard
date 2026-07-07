@@ -1,5 +1,8 @@
-import InboundPlaceholder from './Placeholder'
+import { useOutletContext } from 'react-router-dom'
+import InboundBrand from '../tabs/InboundBrand'
+import type { InboundCtx } from './InboundLayout'
 
 export default function BrandPage() {
-  return <InboundPlaceholder label="브랜드별 분석" />
+  const { period, metric, granularity } = useOutletContext<InboundCtx>()
+  return <InboundBrand period={period} metric={metric} granularity={granularity} />
 }

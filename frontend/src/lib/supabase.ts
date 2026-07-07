@@ -70,11 +70,8 @@ export const CENTER_COLOR: Record<string, string> = {
 
 /* ── 입고 실적 (inbound_brand_daily / inbound_worker_daily) ── */
 // 표준시간 개념 없음(피킹과 차이) — 시간당 수량/금액/파렛트로 생산성 표현
-export interface InboundBrandDaily {
-  id:         number
-  work_date:  string
-  center:     string
-  brand:      string          // '일룸' | '퍼시스' | '데스커' | '3PL'
+// d_* = 정산용 6유형 세분화 (총량은 일반 분류와 동일, 유형 구성만 다름)
+interface InboundMetrics {
   qty_normal: number
   qty_return: number
   qty_cut:    number
@@ -85,23 +82,44 @@ export interface InboundBrandDaily {
   amt_total:  number
   pallets:    number
   hours:      number
+  d_qty_normal:  number
+  d_qty_return:  number
+  d_qty_certify: number
+  d_qty_reentry: number
+  d_qty_inspect: number
+  d_qty_cut:     number
+  d_amt_normal:  number
+  d_amt_return:  number
+  d_amt_certify: number
+  d_amt_reentry: number
+  d_amt_inspect: number
+  d_amt_cut:     number
+  d_pallets:     number
 }
 
-export interface InboundWorkerDaily {
+export interface InboundBrandDaily extends InboundMetrics {
+  id:         number
+  work_date:  string
+  center:     string
+  brand:      string          // '일룸' | '퍼시스' | '데스커' | '3PL'
+}
+
+export interface InboundWorkerDaily extends InboundMetrics {
   id:             number
   work_date:      string
   center:         string
   brand:          string
   worker:         string       // raw ([주간]/[야간] 태그 포함)
   worker_display: string       // 태그 제거
-  qty_normal: number
-  qty_return: number
-  qty_cut:    number
-  qty_total:  number
-  amt_normal: number
-  amt_return: number
-  amt_cut:    number
-  amt_total:  number
-  pallets:    number
-  hours:      number
 }
+
+/* ── 입고유형 (정산용 세분화 6유형) ── */
+export const INBOUND_TYPES = [
+  { key: 'normal',  label: '정상입고',        color: '#3B82F6' },
+  { key: 'return',  label: '반품입고',        color: '#F97316' },
+  { key: 'certify', label: '정품화입고',      color: '#8B5CF6' },
+  { key: 'reentry', label: '재입고',          color: '#10B981' },
+  { key: 'inspect', label: '검사이동·업체반송', color: '#F59E0B' },
+  { key: 'cut',     label: 'CUT',            color: '#94A3B8' },
+] as const
+export type InboundTypeKey = typeof INBOUND_TYPES[number]['key']

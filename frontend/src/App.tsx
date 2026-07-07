@@ -6,6 +6,12 @@ import BrandPage from './pages/picking/BrandPage'
 import ProductivityPage from './pages/picking/ProductivityPage'
 import WorkerPage from './pages/picking/WorkerPage'
 import CenterPage from './pages/picking/CenterPage'
+import InboundLayout from './pages/inbound/InboundLayout'
+import InboundOverviewPage from './pages/inbound/OverviewPage'
+import InboundBrandPage from './pages/inbound/BrandPage'
+import InboundProductivityPage from './pages/inbound/ProductivityPage'
+import InboundWorkerPage from './pages/inbound/WorkerPage'
+import InboundCenterPage from './pages/inbound/CenterPage'
 import ComingSoon from './pages/ComingSoon'
 import Home from './pages/Home'
 
@@ -23,7 +29,14 @@ export default function App() {
             <Route path="worker"       element={<WorkerPage />} />
             <Route path="center"       element={<CenterPage />} />
           </Route>
-          <Route path="/incoming"            element={<ComingSoon title="입고생산성" />} />
+          <Route path="/inbound" element={<InboundLayout />}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview"     element={<InboundOverviewPage />} />
+            <Route path="brand"        element={<InboundBrandPage />} />
+            <Route path="productivity" element={<InboundProductivityPage />} />
+            <Route path="worker"       element={<InboundWorkerPage />} />
+            <Route path="center"       element={<InboundCenterPage />} />
+          </Route>
           <Route path="/cbm"                 element={<ComingSoon title="CBM관리" />} />
           <Route path="/equipment/terminal"  element={<ComingSoon title="단말기 관리" />} />
         </Route>

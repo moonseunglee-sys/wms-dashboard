@@ -166,7 +166,62 @@ export function exportZoneExcel(rows: ZoneDaily[], filename: string): void {
   ]
 
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '구역별 일별 실적')
+  XLSX.utils.book_append_sheet(wb, ws, '합계')
+
+  /* ⑨ 날짜별 개별 시트 */
+  for (const d of dates) {
+    const [, m, day] = d.split('-')
+    const sheetName = `${Number(m)}.${Number(day)}`   // "7.1", "7.2" ...
+
+    const dailyHeader = ['구역', '브랜드', '피킹금액(원)', '박스수', '표준시간(h)', 'WMS시간(h)', '실적시간(h)', '가동률(%)']
+    const dailyRows: (string | number)[][] = [dailyHeader]
+
+    let dTotAmt = 0, dTotBox = 0, dTotStd = 0, dTotWms = 0, dTotAct = 0
+
+    for (const zone of activeZones) {
+      const owner = ZONE_OWNER[zone] ?? ''
+      const m2 = map.get(`${d}|${zone}`)
+      if (!m2) continue
+
+      const act = m2.act_time_hr
+      dailyRows.push([
+        zone,
+        owner,
+        Math.round(m2.pick_amount),
+        m2.pick_box,
+        Math.round(m2.std_time_hr * 100) / 100,
+        m2.wms_time_hr > 0 ? Math.round(m2.wms_time_hr * 100) / 100 : '',
+        Math.round(act * 100) / 100,
+        pct(m2.std_time_hr, act),
+      ])
+      dTotAmt += m2.pick_amount; dTotBox += m2.pick_box
+      dTotStd += m2.std_time_hr; dTotWms += m2.wms_time_hr; dTotAct += act
+    }
+
+    // 합계 행
+    dailyRows.push([
+      '합계', '',
+      Math.round(dTotAmt),
+      dTotBox,
+      Math.round(dTotStd * 100) / 100,
+      dTotWms > 0 ? Math.round(dTotWms * 100) / 100 : '',
+      Math.round(dTotAct * 100) / 100,
+      pct(dTotStd, dTotAct),
+    ])
+
+    const ws2 = XLSX.utils.aoa_to_sheet(dailyRows)
+    ws2['!cols'] = [
+      { wch: 8 },   // 구역
+      { wch: 7 },   // 브랜드
+      { wch: 16 },  // 피킹금액
+      { wch: 8 },   // 박스수
+      { wch: 12 },  // 표준시간
+      { wch: 10 },  // WMS시간
+      { wch: 12 },  // 실적시간
+      { wch: 10 },  // 가동률
+    ]
+    XLSX.utils.book_append_sheet(wb, ws2, sheetName)
+  }
 
   XLSX.writeFile(wb, filename)
 }

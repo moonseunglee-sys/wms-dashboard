@@ -67,3 +67,41 @@ export const CENTER_COLOR: Record<string, string> = {
   '2센터': '#10B981',
   '3센터': '#F97316',
 }
+
+/* ── 입고 실적 (inbound_brand_daily / inbound_worker_daily) ── */
+// 표준시간 개념 없음(피킹과 차이) — 시간당 수량/금액/파렛트로 생산성 표현
+export interface InboundBrandDaily {
+  id:         number
+  work_date:  string
+  center:     string
+  brand:      string          // '일룸' | '퍼시스' | '데스커' | '3PL'
+  qty_normal: number
+  qty_return: number
+  qty_cut:    number
+  qty_total:  number
+  amt_normal: number
+  amt_return: number
+  amt_cut:    number
+  amt_total:  number
+  pallets:    number
+  hours:      number
+}
+
+export interface InboundWorkerDaily {
+  id:             number
+  work_date:      string
+  center:         string
+  brand:          string
+  worker:         string       // raw ([주간]/[야간] 태그 포함)
+  worker_display: string       // 태그 제거
+  qty_normal: number
+  qty_return: number
+  qty_cut:    number
+  qty_total:  number
+  amt_normal: number
+  amt_return: number
+  amt_cut:    number
+  amt_total:  number
+  pallets:    number
+  hours:      number
+}

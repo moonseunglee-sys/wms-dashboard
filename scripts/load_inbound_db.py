@@ -84,6 +84,23 @@ CREATE INDEX IF NOT EXISTS idx_inbound_brand_daily_date  ON inbound_brand_daily(
 CREATE INDEX IF NOT EXISTS idx_inbound_brand_daily_brand ON inbound_brand_daily(brand);
 """
 
+# 정산용(세분화 6유형) 컬럼 — 총량은 일반과 동일, 유형 구성만 다름 (d_ 접두사)
+# 일룸/데스커만 정산용 파일이 있고, 퍼시스/3PL은 세분화 조건이 없어 d_* ≈ 일반값
+DETAIL_COLS = [
+    ("d_qty_normal",  "NUMERIC(14,2)"), ("d_qty_return",  "NUMERIC(14,2)"),
+    ("d_qty_certify", "NUMERIC(14,2)"), ("d_qty_reentry", "NUMERIC(14,2)"),
+    ("d_qty_inspect", "NUMERIC(14,2)"), ("d_qty_cut",     "NUMERIC(14,2)"),
+    ("d_amt_normal",  "NUMERIC(16,2)"), ("d_amt_return",  "NUMERIC(16,2)"),
+    ("d_amt_certify", "NUMERIC(16,2)"), ("d_amt_reentry", "NUMERIC(16,2)"),
+    ("d_amt_inspect", "NUMERIC(16,2)"), ("d_amt_cut",     "NUMERIC(16,2)"),
+    ("d_pallets",     "INTEGER"),
+]
+MIGRATE_SQL = "\n".join(
+    f"ALTER TABLE {t} ADD COLUMN IF NOT EXISTS {c} {typ} DEFAULT 0;"
+    for t in ("inbound_worker_daily", "inbound_brand_daily")
+    for c, typ in DETAIL_COLS
+)
+
 
 def _conn():
     if not DB_URL:
@@ -123,30 +140,39 @@ def load_one(cur, brand: str, date_str: str) -> int:
         d["basic_qty_normal"], d["basic_qty_return"], d["basic_qty_cut"], d["qty_total"],
         d["basic_amt_normal"], d["basic_amt_return"], d["basic_amt_cut"], d["amt_total"],
         d["basic_pallets"], d["hours"],
+        d["detail_qty_normal"], d["detail_qty_return"], d["detail_qty_certify"],
+        d["detail_qty_reentry"], d["detail_qty_inspect"], d["detail_qty_cut"],
+        d["detail_amt_normal"], d["detail_amt_return"], d["detail_amt_certify"],
+        d["detail_amt_reentry"], d["detail_amt_inspect"], d["detail_amt_cut"],
+        d["detail_pallets"],
     ) for d in data]
     execute_values(cur, """
         INSERT INTO inbound_worker_daily
             (work_date, center, brand, worker, worker_display,
              qty_normal, qty_return, qty_cut, qty_total,
              amt_normal, amt_return, amt_cut, amt_total,
-             pallets, hours)
+             pallets, hours,
+             d_qty_normal, d_qty_return, d_qty_certify, d_qty_reentry, d_qty_inspect, d_qty_cut,
+             d_amt_normal, d_amt_return, d_amt_certify, d_amt_reentry, d_amt_inspect, d_amt_cut,
+             d_pallets)
         VALUES %s
     """, rows)
     print(f"  [inbound_worker_daily] {brand} {date_str}: {len(rows)}명 적재")
 
     # ── 브랜드 집계 적재 ──
+    def s(key):
+        return sum(d[key] for d in data)
+
     agg = {
-        "qty_normal": sum(d["basic_qty_normal"] for d in data),
-        "qty_return": sum(d["basic_qty_return"] for d in data),
-        "qty_cut":    sum(d["basic_qty_cut"]    for d in data),
-        "qty_total":  sum(d["qty_total"]        for d in data),
-        "amt_normal": sum(d["basic_amt_normal"] for d in data),
-        "amt_return": sum(d["basic_amt_return"] for d in data),
-        "amt_cut":    sum(d["basic_amt_cut"]    for d in data),
-        "amt_total":  sum(d["amt_total"]        for d in data),
-        "pallets":    sum(d["basic_pallets"]    for d in data),
-        "hours":      sum(d["hours"]            for d in data),
+        "qty_normal": s("basic_qty_normal"), "qty_return": s("basic_qty_return"),
+        "qty_cut": s("basic_qty_cut"), "qty_total": s("qty_total"),
+        "amt_normal": s("basic_amt_normal"), "amt_return": s("basic_amt_return"),
+        "amt_cut": s("basic_amt_cut"), "amt_total": s("amt_total"),
+        "pallets": s("basic_pallets"), "hours": s("hours"),
     }
+    detail = [s(f"detail_qty_{k}") for k in ("normal", "return", "certify", "reentry", "inspect", "cut")] \
+           + [s(f"detail_amt_{k}") for k in ("normal", "return", "certify", "reentry", "inspect", "cut")] \
+           + [s("detail_pallets")]
     cur.execute(
         "DELETE FROM inbound_brand_daily WHERE work_date = %s AND brand = %s",
         (date_str, brand),
@@ -154,10 +180,15 @@ def load_one(cur, brand: str, date_str: str) -> int:
     cur.execute("""
         INSERT INTO inbound_brand_daily
             (work_date, center, brand, qty_normal, qty_return, qty_cut, qty_total,
-             amt_normal, amt_return, amt_cut, amt_total, pallets, hours)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             amt_normal, amt_return, amt_cut, amt_total, pallets, hours,
+             d_qty_normal, d_qty_return, d_qty_certify, d_qty_reentry, d_qty_inspect, d_qty_cut,
+             d_amt_normal, d_amt_return, d_amt_certify, d_amt_reentry, d_amt_inspect, d_amt_cut,
+             d_pallets)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (date_str, center, brand, agg["qty_normal"], agg["qty_return"], agg["qty_cut"], agg["qty_total"],
-          agg["amt_normal"], agg["amt_return"], agg["amt_cut"], agg["amt_total"], agg["pallets"], agg["hours"]))
+          agg["amt_normal"], agg["amt_return"], agg["amt_cut"], agg["amt_total"], agg["pallets"], agg["hours"],
+          *detail))
     print(f"  [inbound_brand_daily]  {brand} {date_str}: 합계 수량 {agg['qty_total']:,.0f} / 시간 {agg['hours']:.2f}h")
     return len(rows)
 
@@ -175,6 +206,7 @@ def main():
     try:
         if args.create:
             create_tables(cur)
+        cur.execute(MIGRATE_SQL)   # 정산용 d_* 컬럼 없으면 추가 (멱등)
         if args.wipe:
             wipe(cur)
 

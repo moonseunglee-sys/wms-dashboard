@@ -145,7 +145,7 @@ export default function Sidebar() {
 
   const initKey = activeGroupKey(pathname)
   const [openGroups, setOpenGroups] = useState<Set<string>>(
-    initKey ? new Set([initKey]) : new Set(['생산성::피킹생산성'])
+    initKey ? new Set([initKey]) : new Set(['생산성::피킹생산성', '생산성::입고생산성'])
   )
 
   useEffect(() => {

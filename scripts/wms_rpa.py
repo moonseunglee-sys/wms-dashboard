@@ -273,8 +273,33 @@ def fetch_3pl_owner_ids(owners: list) -> list:
     return ids
 
 
+_PALLET_COLS = ["작업자", "WAVE명", "WAVE번호", "PLT ID", "오더번호", "ITEM ID",
+                "피킹수량", "LOCATION", "작업일시", "OWNER"]
+
+
+def _build_pallet_df(rows: list, owner_map: dict):
+    """palletHistory API 원본 필드 → picking_automation_v2.py가 기대하는 raw 컬럼명으로 매핑
+    (2026-07-07: 매핑 없이 raw JSON 그대로 저장하던 버그 수정 — KeyError: '작업일시' 원인)
+    """
+    import pandas as pd
+    recs = [{
+        "작업자": r.get("fstUsrNm"),
+        "WAVE명": r.get("waveNm"),
+        "WAVE번호": r.get("waveNo"),
+        "PLT ID": r.get("unitLoadId"),
+        "오더번호": r.get("orderNo"),
+        "ITEM ID": r.get("itemId"),
+        "피킹수량": r.get("confirmQty"),
+        "LOCATION": r.get("toLocation"),
+        "작업일시": r.get("fstSysDt"),
+        "OWNER": owner_map.get(r.get("ownerId"), r.get("ownerId")),
+    } for r in rows]
+    return pd.DataFrame(recs, columns=_PALLET_COLS)
+
+
 def fetch_pallet_history(session: requests.Session, owner_ids: list,
-                         date_from: date, date_to: date, warehouse_id: str = "YA"):
+                         date_from: date, date_to: date, owner_map: dict,
+                         warehouse_id: str = "YA"):
     resp = session.get(
         f"{WMS_URL}/v1/performance/palletHistory/getPerformancePalletHistoryList",
         params=[
@@ -285,12 +310,10 @@ def fetch_pallet_history(session: requests.Session, owner_ids: list,
         ] + [("ownerIdArr", oid) for oid in owner_ids],
     )
     resp.raise_for_status()
-
-    import pandas as pd
-    return pd.DataFrame(resp.json())
+    return _build_pallet_df(resp.json(), owner_map)
 
 
-def download_all(session: requests.Session, target: date, owner_3pl_ids: list) -> dict:
+def download_all(session: requests.Session, target: date, owner_3pl_ids: list, owner_map: dict) -> dict:
     """전체 브랜드 PALLET HISTORY 다운로드. 반환: {brand: Path}"""
     save_dir = DATA_DIR / target.strftime("%Y/%m")
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -310,7 +333,7 @@ def download_all(session: requests.Session, target: date, owner_3pl_ids: list) -
 
         print(f"  [{brand}] {day_label} 수집 중...")
         try:
-            df = fetch_pallet_history(session, owner_ids, d_from, d_to, BRAND_WAREHOUSE[brand])
+            df = fetch_pallet_history(session, owner_ids, d_from, d_to, owner_map, BRAND_WAREHOUSE[brand])
             if len(df) == 0:
                 print(f"    0건 — 파일 미저장")
                 continue
@@ -478,7 +501,7 @@ async def main():
         owner_map     = build_owner_name_map(owners)
         owner_3pl_ids = fetch_3pl_owner_ids(owners)
 
-        downloaded = download_all(session, target, owner_3pl_ids)
+        downloaded = download_all(session, target, owner_3pl_ids, owner_map)
 
         if not args.skip_inbound:
             downloaded.update(

@@ -48,6 +48,8 @@ import argparse
 import asyncio
 import os
 import re
+import subprocess
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -446,6 +448,77 @@ def download_inbound_move(session: requests.Session, target: date, owner_map: di
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Step 5: 자동화 → DB 적재 → git 커밋/push (2026-07-08)
+# ─────────────────────────────────────────────────────────────────────
+def _run_step(label: str, cmd: list) -> bool:
+    print(f"\n[{label}] 실행 중...")
+    ret = subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True,
+                         text=True, encoding="utf-8", errors="replace")
+    tail = (ret.stdout or "")[-2000:]
+    print(tail)
+    if ret.returncode != 0:
+        print(f"  [실패] {label} exit={ret.returncode} — 파이프라인 중단, 이후 단계(DB적재/배포) 생략")
+        print((ret.stderr or "")[-1500:])
+        return False
+    return True
+
+
+def _git_commit_push(target: date) -> bool:
+    """해당 날짜의 아카이브 JSON만 골라 커밋 + push. 변경 없으면 조용히 스킵."""
+    month_dir = f"data/daily/{target.strftime('%Y-%m')}"
+    candidates = [f"{month_dir}/{p}_{target}.json" for p in ("zones", "workers", "result", "inbound")]
+    existing = [f for f in candidates if (BASE_DIR / f).exists()]
+    if not existing:
+        print("  커밋할 아카이브 파일 없음 — 스킵")
+        return True
+
+    subprocess.run(["git", "add"] + existing, cwd=str(BASE_DIR), check=True)
+
+    diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=str(BASE_DIR))
+    if diff.returncode == 0:
+        print("  변경사항 없음 — 커밋 스킵 (이미 반영됨)")
+        return True
+
+    msg = f"data: {target} 피킹+입고 일별 아카이브 (RPA 자동 파이프라인)"
+    commit = subprocess.run(["git", "commit", "-m", msg], cwd=str(BASE_DIR),
+                            capture_output=True, text=True)
+    if commit.returncode != 0:
+        print("  [실패] git commit:", commit.stderr[-500:])
+        return False
+
+    push = subprocess.run(["git", "push", "origin", "main"], cwd=str(BASE_DIR),
+                          capture_output=True, text=True)
+    if push.returncode != 0:
+        print("  [실패] git push:", push.stderr[-500:])
+        return False
+    print("  [완료] 커밋+push 성공")
+    return True
+
+
+def run_pipeline(target: date) -> bool:
+    """다운로드 완료 후: 피킹 자동화 → 입고 자동화 → git 배포. 각 단계 실패 시 중단."""
+    target_str = str(target)
+    print(f"\n{'='*55}")
+    print("자동화 파이프라인 (자동화 → DB 적재 → 배포)")
+    print(f"{'='*55}")
+
+    if not _run_step("피킹 자동화+DB적재", [sys.executable, "scripts/batch_run.py",
+                                        "--dates", target_str]):
+        return False
+
+    if not _run_step("입고 자동화+DB적재", [sys.executable, "scripts/inbound_batch_run.py",
+                                        "--dates", target_str]):
+        return False
+
+    # 리포트는 보조 산출물 — 실패해도 배포는 계속 진행 (non-fatal)
+    _run_step("일일 리포트 생성", [sys.executable, "scripts/generate_daily_report.py",
+                                "--date", target_str])
+
+    print("\n[배포] git 커밋+push...")
+    return _git_commit_push(target)
+
+
+# ─────────────────────────────────────────────────────────────────────
 # 메인
 # ─────────────────────────────────────────────────────────────────────
 async def main():
@@ -453,6 +526,8 @@ async def main():
     ap.add_argument("--date",  help="집계 대상 날짜 YYYY-MM-DD (기본: 어제)")
     ap.add_argument("--force", action="store_true", help="중복 실행 무시")
     ap.add_argument("--skip-inbound", action="store_true", help="입고/이동 다운로드 생략 (피킹만)")
+    ap.add_argument("--skip-pipeline", action="store_true",
+                    help="다운로드만 하고 자동화/DB적재/배포는 생략 (수동 확인용)")
     args = ap.parse_args()
 
     if args.date:
@@ -511,8 +586,21 @@ async def main():
             print(f"  {path.name}")
     else:
         print("저장된 파일 없음")
-    print(f"\n다음: python scripts/batch_run.py --dates {target_str}")
-    print(f"      python scripts/inbound_batch_run.py --dates {target_str}")
+    print(f"{'='*55}\n")
+
+    if args.skip_pipeline:
+        print(f"--skip-pipeline 지정됨. 수동 실행:")
+        print(f"  python scripts/batch_run.py --dates {target_str}")
+        print(f"  python scripts/inbound_batch_run.py --dates {target_str}")
+        return
+
+    if not downloaded:
+        print("다운로드된 파일이 없어 파이프라인 생략")
+        return
+
+    ok = run_pipeline(target)
+    print(f"\n{'='*55}")
+    print(f"파이프라인 {'전체 완료 ✓' if ok else '중단됨 ✗ — 위 로그 확인 필요'}  {datetime.now().strftime('%H:%M:%S')}")
     print(f"{'='*55}\n")
 
 

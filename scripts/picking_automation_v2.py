@@ -1500,30 +1500,40 @@ def _load_price_map(owner: str = "ALL") -> dict:
     return _price_cache[owner]
 
 
-def _write_price_cols(ws, n_rows: int, price_map: dict):
+def _write_price_cols(ws, n_rows: int, price_map: dict) -> dict:
     """
     col59(BG)=공장도가, col58(BF)=피킹금액(수량×공장도가) 직접 기입.
     VLOOKUP 수식 대신 Python이 값을 써서 파일 간 참조 오류 방지.
+
+    반환: {품목코드: {"qty": 합계수량, "rows": 행수}} — price_map에 없어서
+    0원 처리된 품목 (일일 리포트 "특이사항" 집계용, 2026-07-08)
     """
     if n_rows == 0 or not price_map:
-        return
+        return {}
     # 배치로 읽기
     d_rng = ws.Range(ws.Cells(2, 4), ws.Cells(n_rows + 1, 4)).Value  # D열(ItemId)
     e_rng = ws.Range(ws.Cells(2, 5), ws.Cells(n_rows + 1, 5)).Value  # E열(수량)
     bg_vals = []
     bf_vals = []
+    missing: dict = {}
     for i in range(n_rows):
         item_id = d_rng[i][0] if d_rng else None
         qty = e_rng[i][0] if e_rng else 0
         code = str(item_id).strip() if item_id else ""
-        price = price_map.get(code, 0.0)
         qty_n = float(qty) if qty else 0.0
+        if code not in price_map:
+            m = missing.setdefault(code, {"qty": 0.0, "rows": 0})
+            m["qty"]  += qty_n
+            m["rows"] += 1
+        price = price_map.get(code, 0.0)
         bg_vals.append([price])
         bf_vals.append([qty_n * price])
     ws.Range(ws.Cells(2, 59), ws.Cells(n_rows + 1, 59)).Value = bg_vals
     ws.Range(ws.Cells(2, 58), ws.Cells(n_rows + 1, 58)).Value = bf_vals
     total = sum(r[0] for r in bf_vals)
-    print(f"    [{ws.Name}] 피킹금액 합계: {total:,.0f}원")
+    print(f"    [{ws.Name}] 피킹금액 합계: {total:,.0f}원"
+          + (f"  [경고] 단가 없는 품목 {len(missing)}종" if missing else ""))
+    return missing
 
 
 # ── 마스터 시트 직접 로드 ────────────────────────────────────────────
@@ -1780,10 +1790,20 @@ def process(target: date, from_master: bool = False) -> dict:
 
         # ── 피킹금액(BF/BG열) 기입 (owner별 시트 분리: 퍼시스→퍼,시, 일룸/데스커→일, 3PL→바)
         print("\n  [3.1] 피킹금액(BF/BG열) 기입...")
-        _write_price_cols(wb1.Worksheets("F_1"),  len(sd_f1),  _load_price_map("F_1"))
-        _write_price_cols(wb1.Worksheets("I_1"),  len(sd_i1),  _load_price_map("I_1"))
-        _write_price_cols(wb2.Worksheets("D_1"),  len(sd_d1),  _load_price_map("D_1"))
-        _write_price_cols(wb2.Worksheets("DU_1"), len(sd_du1), _load_price_map("DU_1"))
+        _price_gaps = {
+            "퍼시스": _write_price_cols(wb1.Worksheets("F_1"),  len(sd_f1),  _load_price_map("F_1")),
+            "일룸":   _write_price_cols(wb1.Worksheets("I_1"),  len(sd_i1),  _load_price_map("I_1")),
+            "데스커": _write_price_cols(wb2.Worksheets("D_1"),  len(sd_d1),  _load_price_map("D_1")),
+            "3PL":    _write_price_cols(wb2.Worksheets("DU_1"), len(sd_du1), _load_price_map("DU_1")),
+        }
+        _price_gaps = {k: v for k, v in _price_gaps.items() if v}
+        import json as _json_pg
+        gap_path = BASE_DIR / f"data/temp/price_gaps_picking_{target}.json"
+        if _price_gaps:
+            gap_path.write_text(_json_pg.dumps(_price_gaps, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"    [단가 갭 저장] {gap_path.name}")
+        elif gap_path.exists():
+            gap_path.unlink()  # 이전 실행의 stale 갭 파일 제거
         print("  [완료]")
 
         # ── 전체 시트 수식 범위 확장 (fill-down)

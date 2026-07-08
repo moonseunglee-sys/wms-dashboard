@@ -231,9 +231,17 @@ def build_daily(brand: str, target: date) -> pd.DataFrame:
 
     price = load_price_map(brand)
     df["price"] = df["item"].map(price)
-    missing = df[df["price"].isna()]["item"].unique()
+    missing_mask = df["price"].isna()
+    missing = df[missing_mask]["item"].unique()
+    gap_path = TEMP_DIR / f"price_gaps_inbound_{brand}_{target}.json"
     if len(missing):
         print(f"  [경고] 단가 없는 품목 {len(missing)}종 → 금액 0: {list(missing)[:5]}{' ...' if len(missing) > 5 else ''}")
+        gaps = {}
+        for item, g in df[missing_mask].groupby("item"):
+            gaps[item] = {"qty": float(g["qty"].sum()), "rows": int(len(g))}
+        gap_path.write_text(json.dumps(gaps, ensure_ascii=False, indent=2), encoding="utf-8")
+    elif gap_path.exists():
+        gap_path.unlink()  # 이전 실행의 stale 갭 파일 제거
     df["amount"] = (df["price"].fillna(0) * df["qty"]).round(0)
 
     df["pallet_basic"]  = (df["type_basic"]  != "CUT").astype(int)

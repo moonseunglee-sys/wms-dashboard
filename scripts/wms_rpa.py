@@ -53,6 +53,12 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+# Windows 콘솔 기본 코드페이지(cp949)로 이모지/일부 문자 출력 시 죽는 문제 방지
+# (VS Code 터미널 등에서 -X utf8 없이 그냥 실행해도 안전하도록, 2026-07-10)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import requests
 import psycopg2
 from dotenv import load_dotenv
@@ -450,14 +456,15 @@ def download_inbound_move(session: requests.Session, target: date, owner_map: di
 # ─────────────────────────────────────────────────────────────────────
 # Step 5: 자동화 → DB 적재 → git 커밋/push (2026-07-08)
 # ─────────────────────────────────────────────────────────────────────
-def _run_step(label: str, cmd: list) -> bool:
+def _run_step(label: str, cmd: list, fatal: bool = True) -> bool:
     print(f"\n[{label}] 실행 중...")
     ret = subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True,
                          text=True, encoding="utf-8", errors="replace")
     tail = (ret.stdout or "")[-2000:]
     print(tail)
     if ret.returncode != 0:
-        print(f"  [실패] {label} exit={ret.returncode} — 파이프라인 중단, 이후 단계(DB적재/배포) 생략")
+        suffix = "파이프라인 중단, 이후 단계(DB적재/배포) 생략" if fatal else "파이프라인은 계속 진행 (보조 산출물이라 non-fatal)"
+        print(f"  [실패] {label} exit={ret.returncode} — {suffix}")
         print((ret.stderr or "")[-1500:])
         return False
     return True
@@ -481,13 +488,13 @@ def _git_commit_push(target: date) -> bool:
 
     msg = f"data: {target} 피킹+입고 일별 아카이브 (RPA 자동 파이프라인)"
     commit = subprocess.run(["git", "commit", "-m", msg], cwd=str(BASE_DIR),
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, encoding="utf-8", errors="replace")
     if commit.returncode != 0:
         print("  [실패] git commit:", commit.stderr[-500:])
         return False
 
     push = subprocess.run(["git", "push", "origin", "main"], cwd=str(BASE_DIR),
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding="utf-8", errors="replace")
     if push.returncode != 0:
         print("  [실패] git push:", push.stderr[-500:])
         return False
@@ -512,7 +519,7 @@ def run_pipeline(target: date) -> bool:
 
     # 리포트는 보조 산출물 — 실패해도 배포는 계속 진행 (non-fatal)
     _run_step("일일 리포트 생성", [sys.executable, "scripts/generate_daily_report.py",
-                                "--date", target_str])
+                                "--date", target_str], fatal=False)
 
     print("\n[배포] git 커밋+push...")
     return _git_commit_push(target)

@@ -22,6 +22,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 from datetime import date, datetime
 from pathlib import Path
 
@@ -30,6 +31,13 @@ import psycopg2
 from dotenv import load_dotenv
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+
+# Windows 콘솔 기본 코드페이지(cp949)로는 일부 문자 출력 시 UnicodeEncodeError로
+# 스크립트 자체가 죽음 (subprocess로 캡처되어 실행돼도 자식 프로세스 자체의
+# stdout 인코딩 문제라 부모 쪽 encoding 지정과 무관하게 발생) — 2026-07-10 확인
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMP_DIR = BASE_DIR / "data" / "temp"
@@ -258,7 +266,7 @@ def main():
     print(f"  피킹: 구역 {picking['구역수']}개, 작업자 {picking['작업자수']}명")
     print(f"  입고: {len(inbound)}개 브랜드")
     if findings:
-        print(f"  ⚠ 특이사항 {len(findings)}건 발견:")
+        print(f"  [특이사항] {len(findings)}건 발견:")
         for f in findings:
             print(f"    - [{f['구분']}/{f['브랜드']}] {f['유형']}: {f['품목수']}종, {f['상세']}")
     else:

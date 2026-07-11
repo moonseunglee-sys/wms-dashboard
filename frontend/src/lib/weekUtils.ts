@@ -112,11 +112,11 @@ export function bucketLabel(bucket: string, gran: Granularity): string {
   return monthLabel(bucket)
 }
 
-/** 최근 데이터가 포함된 연도 Period (전년도 기준) */
+/** 최근 데이터가 포함된 연도 Period (당해년도 기준) */
 export function recentDataYear(): Period {
   const d = new Date()
   d.setDate(d.getDate() - 1)
-  return { type: 'yearly', year: d.getFullYear() - 1 }
+  return { type: 'yearly', year: d.getFullYear() }
 }
 
 /** 오늘 날짜 문자열 'YYYY-MM-DD' */

@@ -1084,6 +1084,7 @@ def _read_picking_workers(wb, slots: dict, date_str: str) -> list:
        (모두 우리 계산값 = SUMIF 결과. 6/1 전구역 0% 검증완료.)"""
     ws = wb.Worksheets("피킹실적")
     out = []
+    merged = {}   # (zone, name) → 합산 누적 (㈜ 제거로 쪼개진 행 병합용)
     for zone, (s, e) in slots.items():
         owner  = ZONE_OWNER.get(zone, "")
         center = ZONE_CENTER.get(zone, "")
@@ -1099,6 +1100,11 @@ def _read_picking_workers(wb, slots: dict, date_str: str) -> list:
             if name is None or str(name).strip() == "":
                 continue
             name = str(name).strip()
+            # ㈜ 접두어 제거: KGA 수식이 21시 이전 작업자에 붙이는 옛 주/야 구분자 —
+            # 지금은 raw에 [주간]/[야간] 태그가 있어 불필요, DB/대시보드엔 깨끗한 이름만.
+            # 주의: 같은 사람이 21시 경계에 걸치면 ㈜있는 키/없는 키 두 행으로 쪼개져
+            # 있으므로 (금요일 wave 연장 케이스) 제거 후 (zone, name) 기준 합산 병합.
+            name = name.replace("㈜", "")
             std = _safe(l[i][0]);  act = _safe(m[i][0])
             box = _safe(h[i][0]);  amt = _safe(ii[i][0])
             if std == 0 and act == 0 and box == 0 and amt == 0:
@@ -1106,14 +1112,25 @@ def _read_picking_workers(wb, slots: dict, date_str: str) -> list:
             shift = "야간" if "[야간]" in name else "주간"
             # DPS는 N열 수식값 신뢰 불가 → 0으로 초기화, 호출 후 덮어씀
             wms = _safe(n[i][0]) if zone != "DPS" and i < len(n) and n[i] else 0.0
-            out.append({
-                "work_date": date_str, "center": center, "owner": owner,
-                "zone": zone, "worker_name": name, "shift": shift,
-                "std_time_hr": round(std, 6), "act_time_hr": round(act, 6),
-                "pick_amount": round(amt, 0) if amt else None,
-                "pick_box":    int(round(box)) if box else None,
-                "wms_time_hr": round(wms, 4) if wms > 0 else None,
-            })
+            key = (zone, name)
+            if key in merged:
+                agg = merged[key]
+                agg["std"] += std; agg["act"] += act
+                agg["box"] += box; agg["amt"] += amt; agg["wms"] += wms
+            else:
+                merged[key] = {
+                    "center": center, "owner": owner, "shift": shift,
+                    "std": std, "act": act, "box": box, "amt": amt, "wms": wms,
+                }
+    for (zone, name), v in merged.items():
+        out.append({
+            "work_date": date_str, "center": v["center"], "owner": v["owner"],
+            "zone": zone, "worker_name": name, "shift": v["shift"],
+            "std_time_hr": round(v["std"], 6), "act_time_hr": round(v["act"], 6),
+            "pick_amount": round(v["amt"], 0) if v["amt"] else None,
+            "pick_box":    int(round(v["box"])) if v["box"] else None,
+            "wms_time_hr": round(v["wms"], 4) if v["wms"] > 0 else None,
+        })
     return out
 
 

@@ -115,11 +115,22 @@ def next_weekday(d: date) -> date:
 
 
 def get_file_spec(brand: str, target: date):
-    """(date_from, date_to, filename) 반환"""
+    """(date_from, date_to, filename) 반환
+
+    야간 브랜드(일룸/데스커)의 종료일 규칙 — 파일명 끝 날짜가 야간 윈도우를
+    결정하므로(_i1_d1_window) 잘못 잡으면 야간 실적이 통째로 누락됨 (2026-07-11 규명):
+    - 평일(월~금): 익일까지. 금요일도 토요일까지만 — next_weekday(월)로 잡으면
+      야간 윈도우가 일 21시~월 08시로 밀려 금요일 야간(금 21시~토 08시)이 0건이 됨.
+    - 토요일(특근): 다음 평일(월)까지 — 일 21시~월 08시 '월요일 준비 야간'이
+      토요일 실적에 귀속 (이전 담당자 수동 방식과 동일: 토→월 조회).
+    """
     ymd = target.strftime("%m%d")
 
     if brand in NIGHT_BRANDS:
-        end = next_weekday(target)
+        if target.weekday() <= 4:            # 월~금
+            end = target + timedelta(days=1)
+        else:                                # 토/일 특근
+            end = next_weekday(target)
         emd = end.strftime("%m%d")
         return target, end, f"{brand}_{ymd}_{emd}.xlsx"
     else:
@@ -131,10 +142,52 @@ def already_ran(target_str: str) -> bool:
     flag = BASE_DIR / "data" / ".last_run"
     return flag.exists() and flag.read_text().strip() == target_str
 
+def read_last_run():
+    """`.last_run`의 날짜 반환 (없거나 파싱 실패 시 None)."""
+    flag = BASE_DIR / "data" / ".last_run"
+    if not flag.exists():
+        return None
+    try:
+        return datetime.strptime(flag.read_text().strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
 def mark_ran(target_str: str):
     flag = BASE_DIR / "data" / ".last_run"
     flag.parent.mkdir(exist_ok=True)
     flag.write_text(target_str)
+
+
+def pending_targets(today: date) -> list:
+    """`.last_run` 다음 날부터 어제까지 처리할 날짜 목록 (오래된 순).
+
+    월요일 캐치업: 주말에 RPA가 안 돌았어도 월요일 실행 한 번으로
+    금요일분(놓쳤을 경우)+토요일분을 순서대로 자동 처리한다.
+    - 일요일은 실적일이 아니므로 제외 (일 21시~월 08시 야간은 토요일 파일에 귀속)
+    - 토요일 특근분은 파일 범위가 토→월이라 월요일 아침 이후에만 처리 가능
+      (일요일 야간이 끝나야 데이터가 완성됨) — 그 전 실행에서는 보류
+    - 과도한 백필 방지: 최대 어제로부터 7일 전까지만
+    """
+    yesterday = today - timedelta(days=1)
+    last = read_last_run()
+    start = (last + timedelta(days=1)) if last else yesterday
+    if start < yesterday - timedelta(days=6):
+        start = yesterday - timedelta(days=6)
+
+    out = []
+    d = start
+    while d <= yesterday:
+        if d.weekday() == 6:  # 일요일
+            d += timedelta(days=1)
+            continue
+        _, end, _ = get_file_spec("일룸", d)  # 야간 브랜드 기준 파일 종료일
+        if end > today:
+            print(f"  [보류] {d} 실적은 {end} 이후 처리 가능 (야간 미완) — 다음 실행으로 미룸")
+            d += timedelta(days=1)
+            continue
+        out.append(d)
+        d += timedelta(days=1)
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -537,22 +590,24 @@ async def main():
                     help="다운로드만 하고 자동화/DB적재/배포는 생략 (수동 확인용)")
     args = ap.parse_args()
 
+    today = datetime.now().date()
+    today_str = str(today)
+
     if args.date:
-        target = datetime.strptime(args.date, "%Y-%m-%d").date()
+        targets = [datetime.strptime(args.date, "%Y-%m-%d").date()]
+        if not args.force and already_ran(args.date):
+            print(f"[{args.date}] 이미 실행 완료. (--force 로 재실행)")
+            return
     else:
-        target = (datetime.now() - timedelta(days=1)).date()
-
-    target_str = str(target)
-    today_str  = str(datetime.now().date())
-
-    if not args.force and already_ran(target_str):
-        print(f"[{target_str}] 이미 실행 완료. (--force 로 재실행)")
-        return
+        targets = pending_targets(today)
+        if not targets:
+            print("처리할 날짜 없음 (모두 완료 또는 보류).")
+            return
 
     print(f"\n{'='*55}")
     print(f"WMS 데이터 수집 RPA")
     print(f"  실행: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  집계 대상: {target_str}")
+    print(f"  집계 대상: {', '.join(str(t) for t in targets)}")
     print(f"{'='*55}\n")
 
     conn = psycopg2.connect(SUPABASE_DB_URL)
@@ -565,16 +620,8 @@ async def main():
 
     try:
         update_workers(session, conn, today_str)
-
         owners    = fetch_owner_list(session)
         owner_map = build_owner_name_map(owners)
-
-        downloaded = download_all(session, target, owner_map)
-
-        if not args.skip_inbound:
-            downloaded.update(
-                download_inbound_move(session, target, owner_map)
-            )
     except Exception as e:
         import traceback
         print(f"\n오류: {e}")
@@ -582,32 +629,56 @@ async def main():
         conn.close()
         return
 
+    last_run = read_last_run()
+    all_ok = True
+
+    for target in targets:
+        target_str = str(target)
+        print(f"\n{'='*55}")
+        print(f"[{target_str}] 처리 시작")
+        print(f"{'='*55}")
+
+        try:
+            downloaded = download_all(session, target, owner_map)
+            if not args.skip_inbound:
+                downloaded.update(
+                    download_inbound_move(session, target, owner_map)
+                )
+        except Exception as e:
+            import traceback
+            print(f"\n[{target_str}] 다운로드 오류: {e}")
+            traceback.print_exc()
+            # 실패한 날짜를 건너뛰고 mark_ran 하면 영구 누락됨 — 여기서 중단
+            all_ok = False
+            break
+
+        # 과거 날짜 수동 재실행(--date)이 .last_run을 되감지 않도록 앞으로만 갱신
+        if last_run is None or target > last_run:
+            mark_ran(target_str)
+            last_run = target
+
+        print(f"\n[{target_str}] 수집 완료  {datetime.now().strftime('%H:%M:%S')}")
+        if downloaded:
+            print(f"저장 파일 ({len(downloaded)}개):")
+            for key, path in downloaded.items():
+                print(f"  {path.name}")
+        else:
+            print("저장된 파일 없음 — 파이프라인 생략")
+            continue
+
+        if args.skip_pipeline:
+            print(f"--skip-pipeline 지정됨. 수동 실행:")
+            print(f"  python scripts/batch_run.py --dates {target_str}")
+            print(f"  python scripts/inbound_batch_run.py --dates {target_str}")
+            continue
+
+        ok = run_pipeline(target)
+        all_ok = all_ok and ok
+        print(f"\n[{target_str}] 파이프라인 {'완료 ✓' if ok else '중단됨 ✗ — 위 로그 확인 필요'}")
+
     conn.close()
-    mark_ran(target_str)
-
     print(f"\n{'='*55}")
-    print(f"수집 완료  {datetime.now().strftime('%H:%M:%S')}")
-    if downloaded:
-        print(f"저장 파일 ({len(downloaded)}개):")
-        for key, path in downloaded.items():
-            print(f"  {path.name}")
-    else:
-        print("저장된 파일 없음")
-    print(f"{'='*55}\n")
-
-    if args.skip_pipeline:
-        print(f"--skip-pipeline 지정됨. 수동 실행:")
-        print(f"  python scripts/batch_run.py --dates {target_str}")
-        print(f"  python scripts/inbound_batch_run.py --dates {target_str}")
-        return
-
-    if not downloaded:
-        print("다운로드된 파일이 없어 파이프라인 생략")
-        return
-
-    ok = run_pipeline(target)
-    print(f"\n{'='*55}")
-    print(f"파이프라인 {'전체 완료 ✓' if ok else '중단됨 ✗ — 위 로그 확인 필요'}  {datetime.now().strftime('%H:%M:%S')}")
+    print(f"전체 {'완료 ✓' if all_ok else '일부 실패 ✗ — 위 로그 확인 필요'}  {datetime.now().strftime('%H:%M:%S')}")
     print(f"{'='*55}\n")
 
 

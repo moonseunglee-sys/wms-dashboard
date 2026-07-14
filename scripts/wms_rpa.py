@@ -50,6 +50,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import date, datetime, time as dtime, timedelta
 from pathlib import Path
 
@@ -158,8 +159,20 @@ def mark_ran(target_str: str):
     flag.write_text(target_str)
 
 
-def pending_targets(today: date) -> list:
-    """`.last_run` 다음 날부터 어제까지 처리할 날짜 목록 (오래된 순).
+# 야간 데이터 수집 가능 시각: 야간조 정규 마감은 08:00이지만 2센터(데스커)가
+# 캐파 부족으로 08시를 넘겨 작업하는 날이 있고, [야간] 태그 귀속 컷오프가
+# 09:00이므로 (필터 _filter_d1 참조) 09:05부터 수집해야 꼬리가 안 잘림.
+# (2026-07-15 확정 — 08:30 스케줄로 뜬 스크립트는 09:05까지 대기 후 수집)
+READY_TIME   = dtime(9, 5)
+WAIT_MAX_MIN = 90   # 이 시간 내로 준비되는 날짜는 보류 대신 대기 후 진행
+
+
+def pending_targets(today: date):
+    """`.last_run` 다음 날부터 어제까지 처리할 날짜 목록과 대기 시각 반환.
+
+    반환: (targets: list[date], wait_until: datetime | None)
+    wait_until이 지정되면 호출측(main)이 그 시각까지 대기 후 수집을 시작한다
+    (08:30 스케줄 실행 → 09:05 야간 마감까지 대기하는 케이스).
 
     월요일 캐치업: 주말에 RPA가 안 돌았어도 월요일 실행 한 번으로
     금요일분(놓쳤을 경우)+토요일분을 순서대로 자동 처리한다.
@@ -175,23 +188,27 @@ def pending_targets(today: date) -> list:
         start = yesterday - timedelta(days=6)
 
     out = []
+    wait_until = None
     d = start
     while d <= yesterday:
         if d.weekday() == 6:  # 일요일
             d += timedelta(days=1)
             continue
         _, end, _ = get_file_spec("일룸", d)  # 야간 브랜드 기준 파일 종료일
-        # 야간조는 종료일 08:00까지 작업 — 그 전에 받으면 야간 실적이 잘린
-        # 불완전 데이터가 됨 (2026-07-15 07:46 조기 실행 사고). 08:20부터 허용
-        # (정기 스케줄 08:30보다 약간 앞, 마감 08:00 대비 여유 20분).
-        ready_at = datetime.combine(end, dtime(8, 20))
-        if datetime.now() < ready_at:
-            print(f"  [보류] {d} 실적은 {end} 08:20 이후 처리 가능 (야간 작업 진행중/미완) — 다음 실행으로 미룸")
+        ready_at = datetime.combine(end, READY_TIME)
+        now = datetime.now()
+        if now < ready_at:
+            if (ready_at - now).total_seconds() <= WAIT_MAX_MIN * 60:
+                print(f"  [대기 예약] {d} 실적은 {end} {READY_TIME.strftime('%H:%M')}부터 수집 가능 — 대기 후 진행")
+                out.append(d)
+                wait_until = ready_at if wait_until is None else max(wait_until, ready_at)
+            else:
+                print(f"  [보류] {d} 실적은 {end} {READY_TIME.strftime('%H:%M')} 이후 처리 가능 (야간 작업 진행중/미완) — 다음 실행으로 미룸")
             d += timedelta(days=1)
             continue
         out.append(d)
         d += timedelta(days=1)
-    return out
+    return out, wait_until
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -603,10 +620,16 @@ async def main():
             print(f"[{args.date}] 이미 실행 완료. (--force 로 재실행)")
             return
     else:
-        targets = pending_targets(today)
+        targets, wait_until = pending_targets(today)
         if not targets:
             print("처리할 날짜 없음 (모두 완료 또는 보류).")
             return
+        if wait_until:
+            now = datetime.now()
+            if now < wait_until:
+                wait_s = (wait_until - now).total_seconds()
+                print(f"야간 마감 대기: {wait_until.strftime('%H:%M')}까지 {int(wait_s // 60)}분 대기 후 수집 시작...")
+                time.sleep(wait_s)
 
     print(f"\n{'='*55}")
     print(f"WMS 데이터 수집 RPA")

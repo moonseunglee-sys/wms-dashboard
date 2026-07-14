@@ -50,7 +50,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time as dtime, timedelta
 from pathlib import Path
 
 # Windows 콘솔 기본 코드페이지(cp949)로 이모지/일부 문자 출력 시 죽는 문제 방지
@@ -181,8 +181,12 @@ def pending_targets(today: date) -> list:
             d += timedelta(days=1)
             continue
         _, end, _ = get_file_spec("일룸", d)  # 야간 브랜드 기준 파일 종료일
-        if end > today:
-            print(f"  [보류] {d} 실적은 {end} 이후 처리 가능 (야간 미완) — 다음 실행으로 미룸")
+        # 야간조는 종료일 08:00까지 작업 — 그 전에 받으면 야간 실적이 잘린
+        # 불완전 데이터가 됨 (2026-07-15 07:46 조기 실행 사고). 08:20부터 허용
+        # (정기 스케줄 08:30보다 약간 앞, 마감 08:00 대비 여유 20분).
+        ready_at = datetime.combine(end, dtime(8, 20))
+        if datetime.now() < ready_at:
+            print(f"  [보류] {d} 실적은 {end} 08:20 이후 처리 가능 (야간 작업 진행중/미완) — 다음 실행으로 미룸")
             d += timedelta(days=1)
             continue
         out.append(d)

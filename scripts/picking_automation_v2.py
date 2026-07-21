@@ -383,46 +383,23 @@ def _load_raw(path: Path) -> pd.DataFrame:
     return df.dropna(subset=["작업일시"])
 
 
-def _parse_file_end_date(path, t: date) -> date:
-    """파일명 마지막 _NNDD 토큰에서 종료 날짜 파싱.
-
-    예) 일룸_0602_0604.xlsx → 2026-06-04
-        일룸_0601_0602.xlsx → 2026-06-02 (평상시)
-        일룸_0605_0608.xlsx → 2026-06-08 (연속공휴일 후)
-    파싱 실패 시 t+1(평상시 기본값) 반환.
-    """
-    if path is None:
-        return t + timedelta(days=1)
-    stem = Path(path).stem  # e.g., '일룸_0602_0604'
-    parts = stem.split('_')
-    if len(parts) >= 3:
-        end_mmdd = parts[-1]
-        if len(end_mmdd) == 4:
-            try:
-                m, d = int(end_mmdd[:2]), int(end_mmdd[2:])
-                return date(t.year, m, d)
-            except (ValueError, TypeError):
-                pass
-    return t + timedelta(days=1)
-
-
-def _i1_d1_window(t: date, raw_path):
+def _i1_d1_window(t: date, raw_path=None):
     """일룸/데스커 주간·야간 타임스탬프 범위 반환 (day_start, day_end, night_start, night_end).
 
-    파일명의 종료 날짜(NNDD)로 야간 윈도우 결정:
-    - 평상시 NNDD = t+1  → 야간 = t 21:00 ~ (t+1) 08:00
-    - 공휴일 전날 NNDD > t+1 → 야간 = (NNDD-1) 21:00 ~ NNDD 08:00
-      예) 일룸_0602_0604.xlsx: 야간 = 6/3 21:00 ~ 6/4 08:00 (6/3 공휴일 야간투입)
-          일룸_0605_0608.xlsx: 야간 = 6/7 21:00 ~ 6/8 08:00 (연속공휴일 후 야간투입)
+    항상 t 기준 고정: 주간 = t 08:00~20:59, 야간 = t 21:00~(t+1) 08:00.
+    (2026-07-21 확정) 예전엔 파일명 종료일(NNDD)로 야간 윈도우를 잡아서, 토요일
+    타겟 처리 시 그 파일이 일요일까지 걸쳐 있으면 "일요일 밤"이 토요일 실적에
+    같이 잡혔음(주말/휴일이 낀 날짜를 건너뛰고 그 뒤 타겟에 합쳐 처리하던 방식의
+    부작용). 지금은 토/일/공휴일 구분 없이 **모든 날짜를 각자 독립 타겟으로 처리**
+    하므로(pending_targets, get_file_spec 참조) 야간도 항상 그 날짜 자신의 것만
+    보면 됨 — raw_path/파일명 파싱 불필요.
+    raw_path 파라미터는 이전 시그니처 호환용으로만 남김(미사용).
     """
     ts = pd.Timestamp(t)
     day_start   = ts.replace(hour=8,  minute=0,  second=0)
     day_end     = ts.replace(hour=20, minute=59, second=59)
-    end_date    = _parse_file_end_date(raw_path, t)
-    ts_end      = pd.Timestamp(end_date)
-    ts_prev     = ts_end - pd.Timedelta(days=1)
-    night_start = ts_prev.replace(hour=21, minute=0, second=0)
-    night_end   = ts_end.replace(hour=8,  minute=0, second=0)
+    night_start = ts.replace(hour=21, minute=0,  second=0)
+    night_end   = (ts + pd.Timedelta(days=1)).replace(hour=8, minute=0, second=0)
     return day_start, day_end, night_start, night_end
 
 
@@ -439,7 +416,7 @@ def _filter_f1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
 def _filter_i1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
     """일룸: 주간 + 야간, Y-REC 제외, [주간]/[야간] 태그 필수 (DPS P-3XX 예외).
 
-    파일명 종료 날짜(_NNDD)로 야간 윈도우 동적 결정 — _i1_d1_window 참조.
+    주간/야간 윈도우는 항상 t(타겟 날짜) 자신 기준 — _i1_d1_window 참조.
     """
     day_start, day_end, night_start, night_end = _i1_d1_window(t, raw_path)
     mask = df["작업일시"].between(day_start, day_end) | df["작업일시"].between(night_start, night_end)
@@ -457,7 +434,7 @@ def _filter_i1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
 def _filter_d1(df: pd.DataFrame, t: date, raw_path=None) -> pd.DataFrame:
     """데스커: 주간 + 야간, Y-REC 제외.
 
-    파일명 종료 날짜(_NNDD)로 야간 윈도우 동적 결정 — _i1_d1_window 참조.
+    주간/야간 윈도우는 항상 t(타겟 날짜) 자신 기준 — _i1_d1_window 참조.
     주간/야간 판단:
     - [주간] 태그: day_start 이후 시간 제한 없이 주간으로 포함
       (22시까지 wave 연장 케이스 처리 — 퇴근 전 wave 완료까지 주간 귀속)

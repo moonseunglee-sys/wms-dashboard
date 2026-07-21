@@ -15,14 +15,13 @@ WMS 데이터 수집 RPA (피킹 + 입고/이동)
   - 3PL  (Y3): owner 필터 없음(전체) ※ Y3는 3PL 전용 창고라 필터 불필요
     (3PL 원본에 그룹사 물량이 섞여 나올 수 있음 — 이후 자동화 단계의 exclude_owners/_3PL_EXCL이 제거)
 
-파일명/날짜 범위 (피킹, PALLET HISTORY):
-  - 일룸/데스커(야간 있음): {브랜드}_{MMDD}_{END}.xlsx   date_from=target, date_to=next_weekday
+파일명/날짜 범위 (피킹, PALLET HISTORY) — 2026-07-21 확정:
+  - 일룸/데스커(야간 있음): {브랜드}_{MMDD}_{END}.xlsx   date_from=target, date_to=target+1일 (요일 무관)
   - 퍼시스/3PL (주간 전용): {브랜드}_{MMDD}.xlsx          date_from=date_to=target
 
-next_weekday 규칙 (피킹 전용 — 입고/이동은 항상 단일일):
-  평일  target → target+1일 (다음날)
-  토요일 target → target+2일 (월요일)     ex) 토/일/월
-  공휴일 전날  → 수동 --date 사용 권장
+  토/일/공휴일도 전부 각자 독립된 타겟으로 처리(pending_targets가 건너뛰지 않음).
+  target+1일만 받으면 그 날짜 자신의 야간(t 21시~t+1 08시)까지 충분히 커버됨 —
+  "토요일만 월요일까지 넓게 받아서 일요일 밤을 얹는" 방식은 날짜 귀속이 틀어져 폐기.
 
 파일명 (입고/이동, ITEM HISTORY — 브랜드 무관 항상 단일일 target 기준):
   - 입고_{브랜드}_{MMDD}.xlsx  (WMS "실적관리 > ITEM HISTORY > 입하/적치실적" 탭과 동일 데이터)
@@ -104,34 +103,19 @@ BRAND_WAREHOUSE = {
 }
 
 
-# ── 날짜 헬퍼 ──────────────────────────────────────────────────────────
-def next_weekday(d: date) -> date:
-    """d 다음 날부터 첫 번째 평일(월~금) 반환.
-    공휴일은 별도 처리 없음 → 공휴일 낀 주간은 --date 수동 실행 권장.
-    """
-    d = d + timedelta(days=1)
-    while d.weekday() >= 5:   # 5=토, 6=일
-        d += timedelta(days=1)
-    return d
-
-
 def get_file_spec(brand: str, target: date):
     """(date_from, date_to, filename) 반환
 
-    야간 브랜드(일룸/데스커)의 종료일 규칙 — 파일명 끝 날짜가 야간 윈도우를
-    결정하므로(_i1_d1_window) 잘못 잡으면 야간 실적이 통째로 누락됨 (2026-07-11 규명):
-    - 평일(월~금): 익일까지. 금요일도 토요일까지만 — next_weekday(월)로 잡으면
-      야간 윈도우가 일 21시~월 08시로 밀려 금요일 야간(금 21시~토 08시)이 0건이 됨.
-    - 토요일(특근): 다음 평일(월)까지 — 일 21시~월 08시 '월요일 준비 야간'이
-      토요일 실적에 귀속 (이전 담당자 수동 방식과 동일: 토→월 조회).
+    야간 브랜드(일룸/데스커)는 항상 target~target+1일 다운로드 (2026-07-21 확정).
+    요일 구분 없음 — 토/일/공휴일도 각자 독립된 타겟으로 처리하므로(pending_targets
+    참조) 그 날짜 자신의 야간(t 21시~t+1 08시)만 받으면 충분함.
+    (예전엔 토요일만 다음 평일까지 넓게 받아서 그 안에 일요일 밤을 얹었는데,
+    그러면 "토요일 실적"에 일요일 밤이 섞여 날짜 귀속이 틀어짐 — 폐기.)
     """
     ymd = target.strftime("%m%d")
 
     if brand in NIGHT_BRANDS:
-        if target.weekday() <= 4:            # 월~금
-            end = target + timedelta(days=1)
-        else:                                # 토/일 특근
-            end = next_weekday(target)
+        end = target + timedelta(days=1)
         emd = end.strftime("%m%d")
         return target, end, f"{brand}_{ymd}_{emd}.xlsx"
     else:
@@ -175,10 +159,11 @@ def pending_targets(today: date):
     (08:30 스케줄 실행 → 09:05 야간 마감까지 대기하는 케이스).
 
     월요일 캐치업: 주말에 RPA가 안 돌았어도 월요일 실행 한 번으로
-    금요일분(놓쳤을 경우)+토요일분을 순서대로 자동 처리한다.
-    - 일요일은 실적일이 아니므로 제외 (일 21시~월 08시 야간은 토요일 파일에 귀속)
-    - 토요일 특근분은 파일 범위가 토→월이라 월요일 아침 이후에만 처리 가능
-      (일요일 야간이 끝나야 데이터가 완성됨) — 그 전 실행에서는 보류
+    금·토·일요일분을 순서대로 자동 처리한다 (2026-07-21 확정, 요일 구분 없음).
+    - 토/일/공휴일도 각자 독립 타겟 — 그날 자신의 주간(보통 0건)+야간만 집계.
+      (예전엔 일요일을 건너뛰고 그 밤 실적을 토요일에 합쳐 넣었는데, "18일=주간,
+      19일=야간"처럼 날짜별로 완전히 분리되길 원해서 폐기 — 매일 독립 처리로 통일.)
+    - 각 날짜는 자신의 야간 마감(t+1 08~09시) 이후에만 처리 가능 — 그 전이면 보류.
     - 과도한 백필 방지: 최대 어제로부터 7일 전까지만
     """
     yesterday = today - timedelta(days=1)
@@ -191,9 +176,6 @@ def pending_targets(today: date):
     wait_until = None
     d = start
     while d <= yesterday:
-        if d.weekday() == 6:  # 일요일
-            d += timedelta(days=1)
-            continue
         _, end, _ = get_file_spec("일룸", d)  # 야간 브랜드 기준 파일 종료일
         ready_at = datetime.combine(end, READY_TIME)
         now = datetime.now()

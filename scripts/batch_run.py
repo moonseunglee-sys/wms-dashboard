@@ -79,8 +79,7 @@ def run_one(d: date, from_master: bool, skip_db: bool) -> bool:
     if not skip_db:
         cmd_db = [sys.executable, str(BASE_DIR / "scripts/load_picking_db.py"),
                   "--date", date_str]
-        ret_db = subprocess.run(cmd_db, capture_output=True, text=True,
-                                encoding="utf-8", errors="replace")
+        ret_db = subprocess.run(cmd_db, capture_output=True, text=True)
         if ret_db.returncode != 0:
             print(f"  [WARN]  {date_str}  DB 적재 실패")
             print(ret_db.stderr[:400] if ret_db.stderr else "")
